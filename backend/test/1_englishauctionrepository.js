@@ -3,8 +3,8 @@ var DeedRepository = artifacts.require("./DeedRepository.sol");
 const fs = require("fs");
 
 contract("EnglishAuctionRepository", async (accounts) => {
-  let deed_id = 123456789;
-  let deed_url = "123456789";
+  let deedId = 123456789;
+  let deedUrl = "123456789";
 
   it("It should check if the auction repository is initialized", async () => {
     let instance = await EnglishAuctionRepository.deployed();
@@ -19,12 +19,12 @@ contract("EnglishAuctionRepository", async (accounts) => {
 
   it("It should approve transfer of ownership of the 123456789 token", async () => {
     let instance = await DeedRepository.deployed();
-    await instance.registerDeed(deed_id, deed_url);
+    await instance.registerDeed(deedId, deedUrl);
     let auctionInstance = await EnglishAuctionRepository.deployed();
     let auctionAddress = auctionInstance.address;
-    await instance.approve(auctionAddress, deed_id);
+    await instance.approve(auctionAddress, deedId);
 
-    let address = await instance.getApproved(deed_id);
+    let address = await instance.getApproved(deedId);
     assert.equal(
       address.valueOf(),
       auctionAddress,
@@ -36,10 +36,10 @@ contract("EnglishAuctionRepository", async (accounts) => {
     let instance = await DeedRepository.deployed();
     let auctionInstance = await EnglishAuctionRepository.deployed();
     let auctionAddress = auctionInstance.address;
-    await instance.transferFrom(accounts[0], auctionAddress, deed_id, {
+    await instance.transferFrom(accounts[0], auctionAddress, deedId, {
       from: accounts[0],
     });
-    let newOwnerAddress = await instance.ownerOf(deed_id);
+    let newOwnerAddress = await instance.ownerOf(deedId);
     assert.equal(
       newOwnerAddress.valueOf(),
       auctionAddress,
@@ -53,7 +53,7 @@ contract("EnglishAuctionRepository", async (accounts) => {
     let timestamp = new Date().getTime();
     await auctionInstance.createAuction(
       deedInstance.address,
-      deed_id,
+      deedId,
       "MYNFT",
       "meta://",
       10,

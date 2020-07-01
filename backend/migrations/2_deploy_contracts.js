@@ -5,5 +5,5 @@ var EmissionRepository = artifacts.require("./EmissionRepository.sol");
 module.exports = function(deployer) {
   deployer.deploy(EnglishAuctionRepository);
   deployer.deploy(DeedRepository, "Ultra Auction NFT", "UANFT");
-  deployer.deploy(EmissionRepository, "EmissionTrader", "Carbondioxid")
+  deployer.deploy(EmissionRepository, "EmissionTrader", "Carbondioxid");
 };
