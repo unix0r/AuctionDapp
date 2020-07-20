@@ -1,3 +1,4 @@
+var assert = require('assert');
 var EmissionRepository = artifacts.require("./EmissionRepository.sol");
 const fs = require("fs");
 const truffleAssert = require("truffle-assertions");
@@ -41,8 +42,8 @@ contract("EmissionRepository", async (accounts) => {
 
   it("The creator of the token should be the creator of the repo", async () => {
     let symbol = await instance.symbol();
-    console.log(symbol);
-    console.log(instance._owner);
+    //console.log(symbol);
+    //console.log(instance._owner);
 
     assert.equal(
       symbol.valueOf(),
