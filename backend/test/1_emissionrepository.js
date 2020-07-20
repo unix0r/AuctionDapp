@@ -1,4 +1,4 @@
-var assert = require('assert');
+var assert = require("assert");
 var EmissionRepository = artifacts.require("./EmissionRepository.sol");
 const fs = require("fs");
 const truffleAssert = require("truffle-assertions");
