@@ -6,7 +6,7 @@ const PREFIX = "VM Exception while processing transaction: ";
 contract("EmissionRepository", async (accounts) => {
   let instance;
   let auctionContractAddress = "";
-  let emissionId1 = 123456789;
+  let emissionId1 = 1234567;
   let emissionId2 = 2345678;
   let emissionType = "Carbondioxid";
 

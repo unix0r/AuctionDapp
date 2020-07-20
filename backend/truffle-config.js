@@ -7,10 +7,10 @@ module.exports = {
       gas: 3000000
     }
   },
-  		  	compilers: {
-    			solc: {
-      				version: "^0.6.11"  // Fetch exact version from solc-bin
-    			}
-  			}
+  compilers: {
+    solc: {
+      version: "^0.6.11"// Fetch exact version from solc-bin
+    }
+  }
 };
 
