@@ -9,7 +9,8 @@ module.exports = {
   },
   		  	compilers: {
     			solc: {
-      				version: "^0.4.18",    // Fetch exact version from solc-bin (default: truffle's version)
+      				version: "^0.6.11",    // Fetch exact version from solc-bin (default: truffle's version)
     			}
   			}
 };
+
