@@ -1,10 +1,8 @@
 var assert = require("assert");
-//var contract = require("truffle-contract");
 var tokenRepository = artifacts.require("./TokenRepository.sol");
 const fs = require("fs");
 const truffleAssert = require("truffle-assertions");
 const PREFIX = "VM Exception while processing transaction: ";
-const PREPREFIX = "Error: Returned error: "
 
 contract("tokenRepository", async (accounts) => {
   let instance;

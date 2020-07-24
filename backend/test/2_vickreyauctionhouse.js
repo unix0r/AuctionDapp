@@ -41,7 +41,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
         "Selling One Token",
         timestamp + 10000,
         timestamp + 30000,
-        {from: accounts[1]}
+        { from: accounts[1] }
       ),
       "ERC721: owner query for nonexistent token"
     );
@@ -64,7 +64,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
         "Selling One Token",
         timestamp + 10000,
         timestamp + 30000,
-        {from: accounts[1]}
+        { from: accounts[1] }
       ),
       "Contract is not the owner of token"
     );
@@ -72,17 +72,44 @@ contract("VickreyAuctionHouse", async (accounts) => {
     assert.equal(auctionLength, 0, "Auction Count should be 0");
   });
 
-  /*
-  it("It should create a new auction.", async () => {
+  it("It should transfer the token to the smart contract.", async () => {
     let tokenOwner = await tokenRepo.ownerOf(tokenId1);
-    //console.log(tokenOwner1);
+    assert.equal(tokenOwner, accounts[0], "Creator is not the owner of token.");
 
     tokenRepo.safeTransferFrom(tokenOwner, auctionHouse.address, tokenId1, {
       from: tokenOwner,
     });
     tokenOwner = await tokenRepo.ownerOf(tokenId1);
-    assert.equal(tokenOwner, auctionHouse.address, "Contract is not the owner of token.");
+    assert.equal(
+      tokenOwner,
+      auctionHouse.address,
+      "Contract is not the owner of token."
+    );
+  });
 
+  it("It should not create a new auction: Not the correct previous owner of token.", async () => {
+    let auctionLength = await auctionHouse.getAuctionsCount();
+    assert.equal(auctionLength, 0, "Auction Count should be 0");
+    let timestamp = new Date().getTime();
+
+    await truffleAssert.reverts(
+      auctionHouse.createAuction(
+        tokenId1,
+        tokenRepo.address,
+        "Selling One Token",
+        timestamp + 10000,
+        timestamp + 30000,
+        { from: accounts[1] }
+      ),
+      "Not the correct previous owner of this token"
+    );
+
+    //auctionId0 = result.logs[0].args[1].toNumber();
+    auctionLength = await auctionHouse.getAuctionsCount();
+    assert.equal(auctionLength, 0, "Auction Count should be 1");
+  });
+
+  it("It should create a new auction.", async () => {
     let auctionLength = await auctionHouse.getAuctionsCount();
     assert.equal(auctionLength, 0, "Auction Count should be 0");
     let timestamp = new Date().getTime();
@@ -92,11 +119,10 @@ contract("VickreyAuctionHouse", async (accounts) => {
       "Selling One Token",
       timestamp + 10000,
       timestamp + 30000,
-      {from: accounts[0]}
+      { from: accounts[0] }
     );
     auctionId0 = result.logs[0].args[1].toNumber();
     auctionLength = await auctionHouse.getAuctionsCount();
     assert.equal(auctionLength, 1, "Auction Count should be 1");
   });
-  */
 });
