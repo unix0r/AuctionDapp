@@ -1,0 +1,240 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.5.0 <0.7.0;
+
+contract VickreyAuctionHouse {
+    Auction[] public auctions;
+    struct Bid {
+        address from;
+        bytes32 blindedBid;
+        uint256 deposit;
+    }
+
+    struct Auction {
+        uint256 emissionId;
+        address emissionRepositoryAddress;
+        bytes32 metadata;
+        address beneficiary;
+        bool active;
+        bool finalized;
+        uint256 biddingEnd;
+        uint256 revealEnd;
+        address highestBidder;
+        uint256 highestBid;
+        uint256 secondHighestBid;
+        // Every Address refers to one bid
+        mapping(address => Bid) bids;
+    }
+
+    // Mapping auctionID to users Bids.
+    mapping(uint256 => Bid[]) public auctionBids;
+    
+    // Mapping from owner to a list of owned auctions
+    mapping(address => uint[]) public auctionOwner;
+
+    // Allowed withdrawals of previous bids
+    mapping(address => uint256) pendingReturns;
+
+    event AuctionEnded(address winner, uint256 highestBid);
+
+    modifier onlyBefore(uint256 _time) {
+        require(now < _time, "Auction is expired.");
+        _;
+    }
+    modifier onlyAfter(uint256 _time) {
+        require(now > _time, "Auction is not expired.");
+        _;
+    }
+
+    /**
+    Checks if the given Address bid on this auction.
+     */
+    modifier onlyIfBidderExists(address _bidder) {
+        require(
+            bids[_bidder].blindedBid != bytes32(0) &&
+                bids[_bidder].deposit != 0,
+            "No placed bid by sender."
+        );
+        _;
+    }
+
+    modifier onlyIfAuctionExists(uint256 _auctionId){
+
+    }
+
+    /**
+     * Guarantees this contract is owner of the given deed/token
+     * @param _deedRepositoryAddress address of the deed repository to validate from
+     * @param _deedId uint256 ID of the deed which has been registered in the deed repository
+     */
+    modifier contractIsEmissionOwner(
+        address _emissionRepositoryAddress,
+        uint256 _emissiondId
+    ) {
+        address tokenOwner = EmissionRepository(_emissionRepositoryAddress)
+            .ownerOf(_emissiondId);
+        require(
+            tokenOwner == address(this),
+            "Contract is not the owner of the token."
+        );
+        _;
+    }
+
+    /**
+     * @dev Creates an auction with the given informatin
+     * @param _emissionRepositoryAddress address of the DeedRepository contract
+     * @param _emissiondId uint256 of the deed registered in DeedRepository
+     * @param _metadata string containing auction metadata
+     * @return bool whether the auction is created
+     */
+    function createAuction(
+        address _emissionRepositoryAddress,
+        uint256 _emissiondId,
+        bytes32 _metadata,
+        uint256 _biddingEnd,
+        uint256 _revealEnd
+    )
+        public
+        contractIsEmissionOwner(_emissionRepositoryAddress, _emissiondId)
+        returns (bool)
+    {
+        uint256 auctionId = auctions.length;
+        Auction memory newAuction;
+        newAuction.name = _auctionTitle;
+        newAuction.blockDeadline = _blockDeadline;
+        newAuction.startPrice = _startPrice;
+        newAuction.metadata = _metadata;
+        newAuction.deedId = _deedId;
+        newAuction.deedRepositoryAddress = _deedRepositoryAddress;
+        newAuction.owner = msg.sender;
+        newAuction.active = true;
+        newAuction.finalized = false;
+        auctions.push(newAuction);
+        auctionOwner[msg.sender].push(auctionId);
+        emit AuctionCreated(msg.sender, auctionId);
+        return true;
+    }
+
+    /**
+    * @dev Gets the bid counts of a given auction
+    * @param _auctionId uint ID of the auction
+    */
+    function getBidsCount(uint _auctionId) public view returns(uint) {
+        return auctionBids[_auctionId].length;
+    }
+
+    /**
+    * @dev Gets the length of auctions
+    * @return uint representing the auction count
+    */
+    function getCount() public view returns(uint) {
+        return auctions.length;
+    }
+
+        /**
+    * @dev Disallow payments to this contract directly
+    */
+    constructor() public{
+        revert("Direct payments are disallowed.");
+    }
+
+
+    //constructor() public //uint256 _biddingTime,
+    //uint256 _revealTime,
+    //address payable _beneficiary
+    //{
+        //beneficiary = _beneficiary;
+        //biddingEnd = now + _biddingTime;
+        //revealEnd = biddingEnd + _revealTime;
+    //}
+
+    /// Place a blinded bid with `_blindedBid` =
+    /// keccak256(abi.encodePacked(value, fake, secret)).
+    /// The sent ether is only refunded if the bid is correctly
+    /// revealed in the revealing phase. The bid is valid if the
+    /// ether sent together with the bid is at least "value" and
+    /// "fake" is not true. Setting "fake" to true and sending
+    /// not the exact amount are ways to hide the real bid but
+    /// still make the required deposit. The same address can
+    /// place multiple bids.
+    function bid(uint256 _auctionId, bytes32 _blindedBid)
+        public
+        payable
+        onlyBefore(auctions[_auctionId].biddingEnd)
+    {
+        auctions[_auctionId].bids[msg.sender] = Bid({
+            from: msg.sender,
+            blindedBid: _blindedBid,
+            deposit: msg.value
+        });
+    }
+
+    /// Reveal your blinded bids. You will get a refund for all
+    /// correctly blinded invalid bids and for all bids except for
+    /// the totally highest.
+    function reveal(uint256 _auctionId, uint256 _value, bytes32 _secret)
+        public
+        onlyAfter(biddingEnd)
+        onlyBefore(revealEnd)
+        onlyIfBidderExists(msg.sender)
+    {
+        require(
+            bids[msg.sender].blindedBid ==
+                keccak256(abi.encodePacked(_value, _secret)),
+            "Bid was not actually revealed."
+        );
+
+        uint256 refund;
+        Bid storage bidToCheck = auctions[_auctionId].bids[msg.sender];
+        refund += bidToCheck.deposit;
+        if (bidToCheck.deposit >= _value) {
+            if (placeBid(msg.sender, _value)) refund -= _value;
+        }
+        // Make it impossible for the sender to re-claim
+        // the same deposit.
+        bidToCheck.blindedBid = bytes32(0);
+        pendingReturns[msg.sender] += refund;
+        //msg.sender.transfer(refund);
+    }
+
+    /// Withdraw a bid that was overbid.
+    function withdraw() public {
+        uint256 amount = pendingReturns[msg.sender];
+        if (amount > 0) {
+            // It is important to set this to zero because the recipient
+            // can call this function again as part of the receiving call
+            // before `transfer` returns (see the remark above about
+            // conditions -> effects -> interaction).
+            pendingReturns[msg.sender] = 0;
+            msg.sender.transfer(amount);
+        }
+    }
+
+    /// End the auction and send the highest bid
+    /// to the beneficiary.
+    function auctionEnd() public onlyAfter(revealEnd) {
+        require(!ended);
+        emit AuctionEnded(highestBidder, highestBid);
+        ended = true;
+        beneficiary.transfer(highestBid);
+    }
+
+    // This is an "internal" function which means that it
+    // can only be called from the contract itself (or from
+    // derived contracts).
+    function placeBid(address bidder, uint256 value)
+        internal
+        returns (bool success)
+    {
+        if (value <= highestBid) {
+            return false;
+        }
+        if (highestBidder != address(0)) {
+            // Refund the previously highest bidder.
+            pendingReturns[highestBidder] += highestBid;
+        }
+        secondHighestBid = highestBid;
+        highestBid = value;
+        highestBidder = bidder;
+        return true;
+    }
+}
