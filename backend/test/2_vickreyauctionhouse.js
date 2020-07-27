@@ -2,14 +2,14 @@ var assert = require("assert");
 var VickreyAuctionHouse = artifacts.require("./VickreyAuctionHouse.sol");
 var TokenRepository = artifacts.require("./TokenRepository.sol");
 const fs = require("fs");
-const truffleAssert = require("truffle-assertions");
 const { soliditySha3 } = require("web3-utils");
-const time = require("../node_modules/@openzeppelin/test-helpers/src/time");
+const { expectRevert, time } = require("@openzeppelin/test-helpers");
 
 contract("VickreyAuctionHouse", async (accounts) => {
   let tokenId1 = 1234567;
   let tokenId2 = 2345678;
 
+  let sealedBid0;
   let auctionId0;
   let auctionId1;
 
@@ -44,7 +44,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
     );
     let timestamp = new Date().getTime();
 
-    await truffleAssert.reverts(
+    await expectRevert(
       auctionHouse.createAuction(
         tokenId1,
         tokenRepo.address,
@@ -75,7 +75,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
     );
     let timestamp = new Date().getTime();
 
-    await truffleAssert.reverts(
+    await expectRevert(
       auctionHouse.createAuction(
         tokenId1,
         tokenRepo.address,
@@ -122,7 +122,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
     );
     let timestamp = new Date().getTime();
 
-    await truffleAssert.reverts(
+    await expectRevert(
       auctionHouse.createAuction(
         tokenId1,
         tokenRepo.address,
@@ -269,14 +269,19 @@ contract("VickreyAuctionHouse", async (accounts) => {
       2,
       "Auction Count should be 1"
     );
+    sealedBid = sealedBid = soliditySha3(
+      { t: "uint", v: 1 },
+      { t: "string", v: "01234" }
+    );
 
-    sealedBid = soliditySha3(1, "01234");
+    sealedBid0 = sealedBid;
     await auctionHouse.sealedBid(auctionId0, sealedBid, {
       from: accounts[1],
       value: 3,
     });
 
-    sealedBid = soliditySha3(3, "0134");
+    sealedBid = soliditySha3({ t: "uint", v: 3 }, { t: "string", v: "0134" });
+
     await auctionHouse.sealedBid(auctionId0, sealedBid, {
       from: accounts[2],
       value: 5,
@@ -298,9 +303,9 @@ contract("VickreyAuctionHouse", async (accounts) => {
       `Wrong amount of bids: ${bidCount}.`
     );
 
-    const sealedBid = soliditySha3(2, "34");
+    sealedBid = soliditySha3({ t: "uint", v: 2 }, { t: "string", v: "34" });
 
-    await truffleAssert.reverts(
+    await expectRevert(
       auctionHouse.sealedBid(auctionId0, sealedBid, {
         from: accounts[0],
         value: 2,
@@ -317,69 +322,52 @@ contract("VickreyAuctionHouse", async (accounts) => {
   });
 
   it("It should not reveal bid, auction still running.", async () => {
-    await truffleAssert.reverts(
+    await expectRevert(
       auctionHouse.reveal(auctionId0, 2, "34", { from: accounts[1] }),
       "Auction still running."
     );
   });
 
   it("It should not reveal bid, owner is not allowed to reveal.", async () => {
-    /*
-    let auction = await auctionHouse.getAuctionById(auctionId0);
-    let dltTime = await auctionHouse.getTime();
-    console.log("DLT Time: " + dltTime);
-    let timestamp = new Date().getTime();
-    let timeleft = auction[6].toNumber() - timestamp;
-    console.log(timeleft);
-    await sleep(timeleft);
-    time.increase(timeleft);
-
-    timestamp = new Date().getTime();
-    timeleft = auction[6].toNumber() - timestamp;
-    console.log(timeleft);
-
-    sealedBid = soliditySha3(1, "0124");
-    await auctionHouse.sealedBid(auctionId0, sealedBid, {
-      from: accounts[3],
-      value: 3,
-    });
-
-
-    */
-    await truffleAssert.reverts(
+    await expectRevert(
       auctionHouse.reveal(auctionId0, 2, "34", { from: accounts[0] }),
       "The owner of an auction is not allowed to bid/reveal."
     );
   });
 
-  it("It should reveal bids.", async () => {
+  it("it should end the bidding time.", async () => {
     let auction = await auctionHouse.getAuctionById(auctionId0);
-    assert.strictEqual(auction[4], true, "Auction is not active.");
-    assert.strictEqual(auction[5], false, "Auction is finalized.");
-    let timestamp = new Date().getTime();
+    let timestamp = await time.latest();
     let timeleft = auction[6].toNumber() - timestamp;
-    console.log("Time Left: " + timeleft);
-    //await sleep(timeleft);
-    time.increase(timeleft);
-    timestamp = new Date().getTime();
+
+    await time.increase(timeleft + 10);
+
+    //timestamp = new Date().getTime();
+    timestamp = await time.latest();
+    auction = await auctionHouse.getAuctionById(auctionId0);
     timeleft = auction[6].toNumber() - timestamp;
-    console.log("Time Left: " + timeleft);
+  });
 
-    assert.strictEqual(auction[4], true, "Auction is not active.");
-    assert.strictEqual(auction[5], false, "Auction is finalized.");
+  it("It should reveal bids.", async () => {
+    let refund = await auctionHouse.getRefund(accounts[1]);
+    expect(refund.toNumber()).to.be.equal(0);
 
-    auctionHouse.reveal(auctionId0, 1, "01234", { from: accounts[1] });
+    await auctionHouse.reveal(auctionId0, 1, "01234", { from: accounts[1] });
+    refund = await auctionHouse.getRefund(accounts[1]);
+    expect(refund.toNumber()).to.be.equal(2);
+    let auction = await auctionHouse.getAuctionById(auctionId0);
+    expect(auction[8]).to.be.equal(accounts[1]);
+    expect(auction[9].toNumber()).to.be.equal(1);
+
+    auctionHouse.reveal(auctionId0, 3, "0134", { from: accounts[2] });
+
+    refund = await auctionHouse.getRefund(accounts[1]);
+    expect(refund.toNumber()).to.be.equal(3);
 
     auction = await auctionHouse.getAuctionById(auctionId0);
-
-    console.log(auction[8]);
-    console.log(accounts[1]);
-    assert.equal(
-      auction[8],
-      accounts[1],
-      "HighestBidder not correct in auction."
-    );
-
-    //auctionHouse.reveal(auctionId0, 3, "0134", {from: accounts[2]});
+    refund = await auctionHouse.getRefund(accounts[1]);
+    expect(auction[8]).to.be.equal(accounts[2]);
+    expect(auction[9].toNumber()).to.be.equal(3);
+    expect(auction[10].toNumber()).to.be.equal(1);
   });
 });

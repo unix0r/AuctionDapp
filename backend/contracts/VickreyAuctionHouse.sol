@@ -114,7 +114,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     mapping(address => uint256[]) public auctionOwner;
 
     // Allowed withdrawals of previous bids
-    mapping(address => uint256) pendingReturns;
+    mapping(address => uint256) refunds;
 
     /**
      * @dev Gets an array of owned auctions
@@ -281,7 +281,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /// Reveal your blinded bids. You will get a refund for all
     /// correctly blinded invalid bids and for all bids except for
     /// the totally highest.
-
     function reveal(
         uint256 _auctionId,
         uint256 _value,
@@ -299,6 +298,8 @@ contract VickreyAuctionHouse is IERC721Receiver {
                 bid = auctionBids[_auctionId][i];
             }
         }
+        require(bid.from == msg.sender, "Revealer is not bidder.");
+        require(bid.blindedBid != bytes32(0), "No blinded Bid.");
         // Bid was not actually revealed.
         // Do not refund deposit.
         require(
@@ -311,7 +312,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         }
         emit RevealSuccess(msg.sender);
         bid.blindedBid = bytes32(0);
-        pendingReturns[msg.sender] += refund;
+        refunds[msg.sender] += refund;
     }
 
     // This is an "internal" function which means that it
@@ -327,17 +328,25 @@ contract VickreyAuctionHouse is IERC721Receiver {
         }
         if (auctions[_auctionId].highestBidder != address(0)) {
             // Refund the previously highest bidder.
-            pendingReturns[auctions[_auctionId]
-                .highestBidder] += auctions[_auctionId].highestBid;
+            refunds[auctions[_auctionId].highestBidder] += auctions[_auctionId]
+                .highestBid;
         }
-        auctions[_auctionId].secondHighestBid = auctions[_auctionId].highestBid;
+        if (auctions[_auctionId].secondHighestBid == 0) {
+            auctions[_auctionId].secondHighestBid = value;
+        } else {
+            auctions[_auctionId].secondHighestBid = auctions[_auctionId]
+                .highestBid;
+        }
         auctions[_auctionId].highestBid = value;
         auctions[_auctionId].highestBidder = bidder;
         return true;
     }
 
+    function getRefund(address _bidder) public view returns (uint256) {
+        return refunds[_bidder];
+    }
+
     function getBidCount(uint256 _auctionId) public view returns (uint256) {
         return auctionBids[_auctionId].length;
     }
-
 }
