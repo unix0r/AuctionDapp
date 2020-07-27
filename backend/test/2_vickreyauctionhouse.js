@@ -7,11 +7,9 @@ const { expectRevert, time } = require("@openzeppelin/test-helpers");
 
 contract("VickreyAuctionHouse", async (accounts) => {
   let tokenId1 = 1234567;
-  let tokenId2 = 2345678;
 
-  let sealedBid0;
+  let sealedBid;
   let auctionId0;
-  let auctionId1;
 
   let auctionHouse;
   let tokenRepo;
@@ -160,7 +158,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
       { from: accounts[0] }
     );
 
-    auctionId = result.logs[0].args[1].toNumber();
+    auctionId0 = result.logs[0].args[1].toNumber();
 
     auctionLength = await auctionHouse.getAuctionsCount();
     assert.strictEqual(
@@ -169,7 +167,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
       "Auction Count should be 1"
     );
 
-    let auction = await auctionHouse.getAuctionById(auctionId);
+    let auction = await auctionHouse.getAuctionById(auctionId0);
     assert.strictEqual(
       auction[0].toNumber(),
       tokenId1,
@@ -269,12 +267,11 @@ contract("VickreyAuctionHouse", async (accounts) => {
       2,
       "Auction Count should be 1"
     );
-    sealedBid = sealedBid = soliditySha3(
+    sealedBid= soliditySha3(
       { t: "uint", v: 1 },
       { t: "string", v: "01234" }
     );
 
-    sealedBid0 = sealedBid;
     await auctionHouse.sealedBid(auctionId0, sealedBid, {
       from: accounts[1],
       value: 3,
