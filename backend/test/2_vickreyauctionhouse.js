@@ -1,4 +1,3 @@
-var assert = require("assert");
 var VickreyAuctionHouse = artifacts.require("./VickreyAuctionHouse.sol");
 var TokenRepository = artifacts.require("./TokenRepository.sol");
 const fs = require("fs");
@@ -26,20 +25,12 @@ contract("VickreyAuctionHouse", async (accounts) => {
   it("It should check if the auction repository is initialized", async () => {
     fs.writeFileSync("./test/output.address", auctionHouse.address);
     let auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      `${auctionLength} auctions instead of 0`
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
   });
 
   it("It should not create a new auction: Token does not exist.", async () => {
     let auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 0"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
     let timestamp = new Date().getTime();
 
     await expectRevert(
@@ -54,11 +45,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
       "ERC721: owner query for nonexistent token"
     );
     auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 0"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
   });
 
   it("It should not create a new auction: Token is not owned by Contract.", async () => {
@@ -66,11 +53,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
       from: accounts[0],
     });
     let auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 0"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
     let timestamp = new Date().getTime();
 
     await expectRevert(
@@ -85,39 +68,24 @@ contract("VickreyAuctionHouse", async (accounts) => {
       "Contract is not the owner of token"
     );
     auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 0"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
   });
 
   it("It should transfer the token to the smart contract.", async () => {
     let tokenOwner = await tokenRepo.ownerOf(tokenId1);
-    assert.strictEqual(
-      tokenOwner,
-      accounts[0],
-      "Creator is not the owner of token."
-    );
+    expect(tokenOwner).to.be.equal(accounts[0]);
 
     tokenRepo.safeTransferFrom(tokenOwner, auctionHouse.address, tokenId1, {
       from: tokenOwner,
     });
     tokenOwner = await tokenRepo.ownerOf(tokenId1);
-    assert.strictEqual(
-      tokenOwner,
-      auctionHouse.address,
-      "Contract is not the owner of token."
-    );
+    expect(tokenOwner).to.be.equal(auctionHouse.address);
+
   });
 
   it("It should not create a new auction: Not the correct previous owner of token.", async () => {
     let auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 0"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
     let timestamp = new Date().getTime();
 
     await expectRevert(
@@ -131,23 +99,14 @@ contract("VickreyAuctionHouse", async (accounts) => {
       ),
       "Not the correct previous owner of this token"
     );
-
-    //auctionId0 = result.logs[0].args[1].toNumber();
     auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 1"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
   });
 
   it("It should create a new auction.", async () => {
     let auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      0,
-      "Auction Count should be 0"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(0);
+
     let timestamp = new Date().getTime();
     let result = await auctionHouse.createAuction(
       tokenId1,
@@ -161,76 +120,36 @@ contract("VickreyAuctionHouse", async (accounts) => {
     auctionId0 = result.logs[0].args[1].toNumber();
 
     auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      1,
-      "Auction Count should be 1"
-    );
+    expect(auctionLength.toNumber()).to.be.equal(1);
 
     let auction = await auctionHouse.getAuctionById(auctionId0);
-    assert.strictEqual(
-      auction[0].toNumber(),
-      tokenId1,
-      "TokenID not correct in auction."
-    );
-    assert.strictEqual(
-      auction[1],
-      tokenRepo.address,
-      "TokenRepo not correct in auction."
-    );
-    assert.strictEqual(
-      auction[2],
-      "Selling One Token",
-      "TokenMetaData not correct in auction."
-    );
-    assert.strictEqual(
-      auction[3],
-      accounts[0],
-      "Auction Owner not correct in auction."
-    );
-    assert.strictEqual(auction[4], true, "Auction is not active.");
-    assert.strictEqual(auction[5], false, "Auction is finalized.");
-    assert.strictEqual(
-      auction[6].toNumber(),
-      timestamp + 10000,
-      "Auction biddingEnd not correct."
-    );
-    assert.strictEqual(
-      auction[7].toNumber(),
-      timestamp + 30000,
-      "Auction revealEnd not correct."
-    );
-    assert.strictEqual(
-      auction[8],
-      "0x0000000000000000000000000000000000000000",
-      "HighestBidder not correct in auction."
-    );
-    assert.strictEqual(
-      auction[9].toNumber(),
-      0,
-      "HighestBid not correct in auction."
-    );
-    assert.strictEqual(
-      auction[10].toNumber(),
-      0,
-      "SecondHighestBid not correct in auction."
-    );
+    expect(auction[0].toNumber()).to.be.equal(tokenId1);
+    expect(auction[1]).to.be.equal(tokenRepo.address);
+    expect(auction[2]).to.be.equal("Selling One Token");
+    expect(auction[3]).to.be.equal(accounts[0]);
+    expect(auction[4]).to.be.equal(true);
+    expect(auction[5]).to.be.equal(false);
+    expect(auction[6].toNumber()).to.be.equal(timestamp + 10000);
+    expect(auction[7].toNumber()).to.be.equal(timestamp + 30000);
+    expect(auction[8]).to.be.equal("0x0000000000000000000000000000000000000000");
+    expect(auction[9].toNumber()).to.be.equal(0);
+    expect(auction[10].toNumber()).to.be.equal(0);
   });
 
   it("It should cancel an auction.", async () => {
-    let auction = await auctionHouse.getAuctionById(auctionId);
-    assert.strictEqual(auction[4], true, "Auction is not active.");
-    assert.strictEqual(auction[5], false, "Auction is finalized.");
+    let auction = await auctionHouse.getAuctionById(auctionId0);
+    expect(auction[4]).to.be.equal(true);
+    expect(auction[5]).to.be.equal(false);
+
     await auctionHouse.cancelAuction(0);
     let tokenOwner = await tokenRepo.ownerOf(tokenId1);
-    assert.strictEqual(
-      tokenOwner,
-      accounts[0],
-      "Creator is not the owner of token."
-    );
-    auction = await auctionHouse.getAuctionById(auctionId);
-    assert.strictEqual(auction[4], false, "Auction is active.");
-    assert.strictEqual(auction[5], true, "Auction is not finalized.");
+
+    expect(tokenOwner).to.be.equal(accounts[0]);
+
+    auction = await auctionHouse.getAuctionById(auctionId0);
+
+    expect(auction[4]).to.be.equal(false);
+    expect(auction[5]).to.be.equal(true);
   });
 
   it("It should bid on an auction.", async () => {
@@ -335,14 +254,18 @@ contract("VickreyAuctionHouse", async (accounts) => {
   it("it should end the bidding time.", async () => {
     let auction = await auctionHouse.getAuctionById(auctionId0);
     let timestamp = await time.latest();
+
+    // How long does it take, until the auction is ended?
     let timeleft = auction[6].toNumber() - timestamp;
 
-    await time.increase(timeleft + 10);
+    // Manipulate the time in the Blockchain, so the auction is ended.
+    await time.increase(timeleft + 1);
 
-    //timestamp = new Date().getTime();
     timestamp = await time.latest();
-    auction = await auctionHouse.getAuctionById(auctionId0);
     timeleft = auction[6].toNumber() - timestamp;
+
+    // Expect the time left to be less than 0 seconds: Time over
+    expect(timeleft < 0).to.be.equal(true);
   });
 
   it("It should reveal bids.", async () => {
