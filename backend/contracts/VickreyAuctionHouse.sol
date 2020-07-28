@@ -98,9 +98,11 @@ contract VickreyAuctionHouse is IERC721Receiver {
         );
         _;
     }
-    event BidSuccess(address _from, uint256 _auctionId);
-    event RevealSuccess(address _from);
-    event AuctionCreated(address owner, uint256 auctionId);
+    event BidSuccess(uint256 _auctionId, address _from);
+    event RevealSuccess(uint256 _auctionId, address _from);
+    event AuctionCreated(uint256 auctionId, address _owner);
+    event AuctionEnded(uint256 _auctionId, address _winner);
+    event AuctioNCanceled(uint256 _auctionId);
 
     mapping(uint256 => address) previousOwner;
 
@@ -175,7 +177,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         newAuction.revealEnd = _revealEnd;
         auctions.push(newAuction);
         auctionOwner[msg.sender].push(auctionId);
-        emit AuctionCreated(msg.sender, auctionId);
+        emit AuctionCreated(auctionId, msg.sender);
         return auctionId;
     }
 
@@ -275,7 +277,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         auctionBids[_auctionId].push(
             Bid({from: msg.sender, blindedBid: _blindedBid, deposit: msg.value})
         );
-        emit BidSuccess(msg.sender, _auctionId);
+        emit BidSuccess(_auctionId, msg.sender);
     }
 
     /// Reveal your blinded bids. You will get a refund for all
@@ -310,7 +312,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         if (bid.deposit >= _value) {
             if (placeBid(_auctionId, msg.sender, _value)) refund -= _value;
         }
-        emit RevealSuccess(msg.sender);
+        emit RevealSuccess(_auctionId, msg.sender);
         bid.blindedBid = bytes32(0);
         refunds[msg.sender] += refund;
     }
@@ -340,6 +342,35 @@ contract VickreyAuctionHouse is IERC721Receiver {
         auctions[_auctionId].highestBid = value;
         auctions[_auctionId].highestBidder = bidder;
         return true;
+    }
+
+    // Withdraw a bid that was overbid.
+    function withdraw() public {
+        uint256 amount = refunds[msg.sender];
+        if (amount > 0) {
+            // It is important to set this to zero because the recipient
+            // can call this function again as part of the receiving call
+            // before `transfer` returns (see the remark above about
+            // conditions -> effects -> interaction).
+            refunds[msg.sender] = 0;
+            msg.sender.transfer(amount);
+        }
+    }
+
+    // End the auction and send the highest bid
+    // to the beneficiary.
+    function auctionEnd(uint256 _auctionId)
+        public
+        onlyAfter(auctions[_auctionId].revealEnd)
+    {
+        require(!auctions[_auctionId].active, "Auction is already ended.");
+        emit AuctionEnded(_auctionId, auctions[_auctionId].highestBidder);
+        auctions[_auctionId].active = true;
+        refunds[auctions[_auctionId].owner] += auctions[_auctionId]
+            .secondHighestBid;
+        refunds[auctions[_auctionId].highestBidder] +=
+            auctions[_auctionId].highestBid -
+            auctions[_auctionId].secondHighestBid;
     }
 
     function getRefund(address _bidder) public view returns (uint256) {

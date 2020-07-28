@@ -116,8 +116,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
       timestamp + 30000,
       { from: accounts[0] }
     );
-
-    auctionId0 = result.logs[0].args[1].toNumber();
+    auctionId0 = result.logs[0].args[0].toNumber();
 
     auctionLength = await auctionHouse.getAuctionsCount();
     expect(auctionLength.toNumber()).to.be.equal(1);
@@ -173,7 +172,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
       { from: accounts[0] }
     );
 
-    auctionId0 = result.logs[0].args[1].toNumber();
+    auctionId0 = result.logs[0].args[0].toNumber();
     let bidCount = await auctionHouse.getBidCount(auctionId0);
     assert.strictEqual(
       bidCount.toNumber(),
