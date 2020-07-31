@@ -1,15 +1,24 @@
 module.exports = {
   networks: {
+    //Blockchain for deploying
     development: {
       host: "127.0.0.1",
       port: 7545,
       network_id: "*",
-      gas: 3000000
+      gas: 3000000,
+      gasPrice: 20000000000
     }
   },
+  //Compiler to compile Smart Contracts
   compilers: {
     solc: {
-      version: "^0.6.11"// Fetch exact version from solc-bin
+      version: "native",// Use native installed solc compiler
+      settings: {
+        optimizer: {
+          enabled: true, 
+          runs: 200    
+        }
+      }
     }
   }
 };
