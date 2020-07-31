@@ -143,30 +143,25 @@ contract("VickreyAuctionHouse", async (accounts) => {
     expect(auction[2]).to.be.equal("Selling One Token");
     expect(auction[3]).to.be.equal(accounts[0]);
     expect(auction[4]).to.be.equal(true);
-    expect(auction[5]).to.be.equal(false);
-    expect(auction[6].toNumber()).to.be.equal(timestamp + 10000);
-    expect(auction[7].toNumber()).to.be.equal(timestamp + 30000);
-    expect(auction[8]).to.be.equal(
+    expect(auction[5].toNumber()).to.be.equal(timestamp + 10000);
+    expect(auction[6].toNumber()).to.be.equal(timestamp + 30000);
+    expect(auction[7]).to.be.equal(
       "0x0000000000000000000000000000000000000000"
     );
+    expect(auction[8].toNumber()).to.be.equal(0);
     expect(auction[9].toNumber()).to.be.equal(0);
-    expect(auction[10].toNumber()).to.be.equal(0);
   });
 
   it("It should cancel an auction.", async () => {
     let auction = await auctionHouse.getAuctionById(auctionId);
     expect(auction[4]).to.be.equal(true);
-    expect(auction[5]).to.be.equal(false);
 
     await auctionHouse.cancelAuction(0);
     let tokenOwner = await tokenRepo.ownerOf(tokenId);
-
     expect(tokenOwner).to.be.equal(accounts[0]);
 
     auction = await auctionHouse.getAuctionById(auctionId);
-
     expect(auction[4]).to.be.equal(false);
-    expect(auction[5]).to.be.equal(true);
   });
 
   it("It should bid on an auction.", async () => {
@@ -266,13 +261,13 @@ contract("VickreyAuctionHouse", async (accounts) => {
     let timestamp = await time.latest();
 
     // How long does it take, until the auction is ended?
-    let timeleft = auction[6].toNumber() - timestamp;
+    let timeleft = auction[5].toNumber() - timestamp;
 
     // Manipulate the time in the Blockchain, so the auction is ended.
     await time.increase(timeleft + 1);
 
     timestamp = await time.latest();
-    timeleft = auction[6].toNumber() - timestamp;
+    timeleft = auction[5].toNumber() - timestamp;
 
     // Expect the time left to be less than 0 seconds: Time over
     expect(timeleft < 0).to.be.equal(true);
@@ -291,21 +286,9 @@ contract("VickreyAuctionHouse", async (accounts) => {
       expect(refund.toNumber()).to.be.equal(deposits[i] - bids[i]);
 
       let auction = await auctionHouse.getAuctionById(auctionId);
-      expect(auction[8]).to.be.equal(accounts[i]);
-      expect(auction[9].toNumber()).to.be.equal(bids[i]);
+      expect(auction[7]).to.be.equal(accounts[i]);
+      expect(auction[8].toNumber()).to.be.equal(bids[i]);
     }
-    /*
-    auctionHouse.reveal(auctionId, bids[2], secrets[2], { from: accounts[2] });
-
-    refund = await auctionHouse.getRefund(accounts[1]);
-    expect(refund.toNumber()).to.be.equal(3);
-
-    auction = await auctionHouse.getAuctionById(auctionId);
-    refund = await auctionHouse.getRefund(accounts[1]);
-    expect(auction[8]).to.be.equal(accounts[2]);
-    expect(auction[9].toNumber()).to.be.equal(3);
-    expect(auction[10].toNumber()).to.be.equal(1);
-    */
   });
 
   it("it should end the reveal time.", async () => {
@@ -313,13 +296,13 @@ contract("VickreyAuctionHouse", async (accounts) => {
     let timestamp = await time.latest();
 
     // How long does it take, until the auction is ended?
-    let timeleft = auction[7].toNumber() - timestamp;
+    let timeleft = auction[6].toNumber() - timestamp;
 
     // Manipulate the time in the Blockchain, so the auction is ended.
     await time.increase(timeleft + 1);
 
     timestamp = await time.latest();
-    timeleft = auction[7].toNumber() - timestamp;
+    timeleft = auction[6].toNumber() - timestamp;
 
     // Expect the time left to be less than 0 seconds: Time over
     expect(timeleft < 0).to.be.equal(true);
@@ -328,7 +311,6 @@ contract("VickreyAuctionHouse", async (accounts) => {
   it("It should end an auction and transfer the token.", async () => {
     let auction = await auctionHouse.getAuctionById(auctionId);
     expect(auction[4]).to.be.equal(true);
-    expect(auction[5]).to.be.equal(false);
 
     var refunds = [];
     var i;
@@ -350,7 +332,6 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     auction = await auctionHouse.getAuctionById(auctionId);
     expect(auction[4]).to.be.equal(false);
-    expect(auction[5]).to.be.equal(true);
   });
 
   it("It should withdraw the money.", async () => {

@@ -40,7 +40,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
         string metadata;
         address owner;
         bool active;
-        bool finalized;
         uint256 biddingEnd;
         uint256 revealEnd;
         address highestBidder;
@@ -173,7 +172,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
         newAuction.metadata = _metadata;
         newAuction.owner = msg.sender;
         newAuction.active = true;
-        newAuction.finalized = false;
         newAuction.biddingEnd = _biddingEnd;
         newAuction.revealEnd = _revealEnd;
         auctions.push(newAuction);
@@ -211,7 +209,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
             string memory metadata,
             address owner,
             bool active,
-            bool finalized,
             uint256 biddingEnd,
             uint256 revealEnd,
             address highestBidder,
@@ -226,7 +223,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
             auc.metadata,
             auc.owner,
             auc.active,
-            auc.finalized,
             auc.biddingEnd,
             auc.revealEnd,
             auc.highestBidder,
@@ -244,7 +240,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
     function cancelAuction(uint256 _auctionId) public isOwner(_auctionId) {
         require(
             auctions[_auctionId].active &&
-                !auctions[_auctionId].finalized &&
                 auctions[_auctionId].highestBidder == address(0) &&
                 auctions[_auctionId].highestBid == 0 &&
                 auctions[_auctionId].secondHighestBid == 0,
@@ -252,7 +247,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
         );
 
         auctions[_auctionId].active = false;
-        auctions[_auctionId].finalized = true;
         approveAndTransfer(
             address(this),
             auctions[_auctionId].owner,
@@ -366,7 +360,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
         require(auctions[_auctionId].active, "Auction is already ended.");
         emit AuctionEnded(_auctionId, auctions[_auctionId].highestBidder);
         auctions[_auctionId].active = false;
-        auctions[_auctionId].finalized = true;
         refunds[auctions[_auctionId].owner] += auctions[_auctionId]
             .secondHighestBid;
         refunds[auctions[_auctionId].highestBidder] +=
