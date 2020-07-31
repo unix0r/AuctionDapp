@@ -289,4 +289,10 @@ contract("VickreyAuctionHouse", async (accounts) => {
     expect(auction[9].toNumber()).to.be.equal(3);
     expect(auction[10].toNumber()).to.be.equal(1);
   });
+
+  it("It should end an auction.", async () => {
+    let auction = await auctionHouse.getAuctionById(auctionId0);
+    expect(auction[4]).to.be.equal(true);
+    expect(auction[5]).to.be.equal(false);
+  })
 });
