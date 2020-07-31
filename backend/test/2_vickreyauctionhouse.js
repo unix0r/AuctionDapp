@@ -30,15 +30,12 @@ contract("VickreyAuctionHouse", async (accounts) => {
     tokenRepo = await TokenRepository.deployed();
     var i;
     for (i = 0; i < bids.length; i++) {
-      balanceTracker[i] = await balance.tracker(accounts[i]);
+      balanceTracker[parseInt(i)] = await balance.tracker(accounts[parseInt(i)]);
     }
   });
 
   it("It should check if the auction repository is initialized", async () => {
     expect(auctionHouse);
-    balance0 = await balance.current(accounts[0]);
-    balance1 = await balance.current(accounts[1]);
-    balance2 = await balance.current(accounts[2]);
     balanceContractTracker = await balance.tracker(auctionHouse.address);
     fs.writeFileSync("./test/output.address", auctionHouse.address);
     let auctionLength = await auctionHouse.getAuctionsCount();
@@ -192,25 +189,25 @@ contract("VickreyAuctionHouse", async (accounts) => {
     var i;
     var sumOfDeposits = 0;
     for (i = 1; i < bids.length; i++) {
-      sealedBids[i] = getSealedBid(bids[i], secrets[i]);
-      sumOfDeposits += deposits[i];
+      sealedBids[parseInt(i)] = getSealedBid(bids[parseInt(i)], secrets[parseInt(i)]);
+      sumOfDeposits += deposits[parseInt(i)];
       await balanceContractTracker.delta();
-      await balanceTracker[i].delta();
+      await balanceTracker[parseInt(i)].delta();
 
-      let result = await auctionHouse.sealedBid(auctionId, sealedBids[i], {
-        from: accounts[i],
-        value: deposits[i],
+      let result = await auctionHouse.sealedBid(auctionId, sealedBids[parseInt(i)], {
+        from: accounts[parseInt(i)],
+        value: deposits[parseInt(i)],
       });
 
       let deltaAuctionHouse = await balanceContractTracker.delta();
 
       // AuctionHouse has more money from deposits.
-      expect(deltaAuctionHouse.cmp(new BN(deposits[i]))).to.be.equal(0);
+      expect(deltaAuctionHouse.cmp(new BN(deposits[parseInt(i)]))).to.be.equal(0);
 
-      let delta = await balanceTracker[i].delta();
+      let delta = await balanceTracker[parseInt(i)].delta();
       let payment = new BN(result.receipt.gasUsed)
         .mul(gasPrice)
-        .add(new BN(deposits[i]));
+        .add(new BN(deposits[parseInt(i)]));
 
       // Bidder has less money than before bid.
       expect(payment.cmp(delta.abs())).to.be.equal(0);
@@ -224,7 +221,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
     expect(bidCount.toNumber()).to.be.equal(bids.length - 1);
 
     //sealedBid = soliditySha3({ t: "uint", v: 2 }, { t: "string", v: "34" });
-    sealedBids[0] = getSealedBid(bids[0], secrets[0]);
+    sealedBids[parseInt(0)] = getSealedBid(bids[0], secrets[0]);
 
     await expectRevert(
       auctionHouse.sealedBid(auctionId, sealedBids[0], {
@@ -276,18 +273,18 @@ contract("VickreyAuctionHouse", async (accounts) => {
   it("It should reveal bids.", async () => {
     var i;
     for (i = 1; i < bids.length; i++) {
-      let refund = await auctionHouse.getRefund(accounts[i]);
+      let refund = await auctionHouse.getRefund(accounts[parseInt(i)]);
       expect(refund.toNumber()).to.be.equal(0);
 
-      await auctionHouse.reveal(auctionId, bids[i], secrets[i], {
-        from: accounts[i],
+      await auctionHouse.reveal(auctionId, bids[parseInt(i)], secrets[parseInt(i)], {
+        from: accounts[parseInt(i)],
       });
-      refund = await auctionHouse.getRefund(accounts[i]);
-      expect(refund.toNumber()).to.be.equal(deposits[i] - bids[i]);
+      refund = await auctionHouse.getRefund(accounts[parseInt(i)]);
+      expect(refund.toNumber()).to.be.equal(deposits[parseInt(i)] - bids[parseInt(i)]);
 
       let auction = await auctionHouse.getAuctionById(auctionId);
-      expect(auction[7]).to.be.equal(accounts[i]);
-      expect(auction[8].toNumber()).to.be.equal(bids[i]);
+      expect(auction[7]).to.be.equal(accounts[parseInt(i)]);
+      expect(auction[8].toNumber()).to.be.equal(bids[parseInt(i)]);
     }
   });
 
@@ -315,7 +312,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
     var refunds = [];
     var i;
     for (i = 0; i < bids.length; i++) {
-      refunds[i] = await auctionHouse.getRefund(accounts[i]);
+      refunds[parseInt(i)] = await auctionHouse.getRefund(accounts[parseInt(i)]);
     }
     expect(refunds[0].toNumber()).to.be.equal(0);
     expect(refunds[1].toNumber()).to.be.equal(deposits[1]);
@@ -341,10 +338,10 @@ contract("VickreyAuctionHouse", async (accounts) => {
     let deltas = [];
     var i;
     for (i = 0; i < bids.length; i++) {
-      await balanceTracker[i].delta();
-      let result = await auctionHouse.withdraw({ from: accounts[i] });
-      gasCosts[i] = new BN(result.receipt.gasUsed).mul(gasPrice);
-      deltas[i] = await balanceTracker[i].delta();
+      await balanceTracker[parseInt(i)].delta();
+      let result = await auctionHouse.withdraw({ from: accounts[parseInt(i)] });
+      gasCosts[parseInt(i)] = new BN(result.receipt.gasUsed).mul(gasPrice);
+      deltas[parseInt(i)] = await balanceTracker[parseInt(i)].delta();
     }
 
     // Seller gets the second highes bid, but has to pay the gas.
