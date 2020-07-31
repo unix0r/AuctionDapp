@@ -2,27 +2,44 @@ var VickreyAuctionHouse = artifacts.require("./VickreyAuctionHouse.sol");
 var TokenRepository = artifacts.require("./TokenRepository.sol");
 const fs = require("fs");
 const { soliditySha3 } = require("web3-utils");
-const { expectRevert, time } = require("@openzeppelin/test-helpers");
+const { expectRevert, time, balance } = require("@openzeppelin/test-helpers");
+const BN = require("bn.js");
+const { exception } = require("console");
+
+const gasPrice = new BN(20000000000);
+function getSealedBid(_bid, _secret) {
+  return soliditySha3({ t: "uint", v: _bid }, { t: "string", v: _secret });
+}
 
 contract("VickreyAuctionHouse", async (accounts) => {
-  let tokenId1 = 1234567;
+  const tokenId = 1234567;
+  var auctionId;
+  var balanceContractTracker;
 
-  let sealedBid;
-  let auctionId0;
+  var bids = [1, 1, 3, 4, 8];
+  var deposits = [1, 3, 5, 5, 10];
+  var secrets = ["01", "12345", "hidden", "secret", "gulf"];
+  var sealedBids = [];
+  var balanceTracker = [];
 
   let auctionHouse;
   let tokenRepo;
 
-  function sleep(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-  }
-
   beforeEach("setup contract for each test", async function () {
     auctionHouse = await VickreyAuctionHouse.deployed();
     tokenRepo = await TokenRepository.deployed();
+    var i;
+    for (i = 0; i < bids.length; i++) {
+      balanceTracker[i] = await balance.tracker(accounts[i]);
+    }
   });
 
   it("It should check if the auction repository is initialized", async () => {
+    expect(auctionHouse);
+    balance0 = await balance.current(accounts[0]);
+    balance1 = await balance.current(accounts[1]);
+    balance2 = await balance.current(accounts[2]);
+    balanceContractTracker = await balance.tracker(auctionHouse.address);
     fs.writeFileSync("./test/output.address", auctionHouse.address);
     let auctionLength = await auctionHouse.getAuctionsCount();
     expect(auctionLength.toNumber()).to.be.equal(0);
@@ -35,7 +52,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     await expectRevert(
       auctionHouse.createAuction(
-        tokenId1,
+        tokenId,
         tokenRepo.address,
         "Selling One Token",
         timestamp + 10000,
@@ -49,7 +66,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
   });
 
   it("It should not create a new auction: Token is not owned by Contract.", async () => {
-    await tokenRepo.registerToken(accounts[0], tokenId1, {
+    await tokenRepo.registerToken(accounts[0], tokenId, {
       from: accounts[0],
     });
     let auctionLength = await auctionHouse.getAuctionsCount();
@@ -58,7 +75,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     await expectRevert(
       auctionHouse.createAuction(
-        tokenId1,
+        tokenId,
         tokenRepo.address,
         "Selling One Token",
         timestamp + 10000,
@@ -72,15 +89,14 @@ contract("VickreyAuctionHouse", async (accounts) => {
   });
 
   it("It should transfer the token to the smart contract.", async () => {
-    let tokenOwner = await tokenRepo.ownerOf(tokenId1);
+    let tokenOwner = await tokenRepo.ownerOf(tokenId);
     expect(tokenOwner).to.be.equal(accounts[0]);
 
-    tokenRepo.safeTransferFrom(tokenOwner, auctionHouse.address, tokenId1, {
+    tokenRepo.safeTransferFrom(tokenOwner, auctionHouse.address, tokenId, {
       from: tokenOwner,
     });
-    tokenOwner = await tokenRepo.ownerOf(tokenId1);
+    tokenOwner = await tokenRepo.ownerOf(tokenId);
     expect(tokenOwner).to.be.equal(auctionHouse.address);
-
   });
 
   it("It should not create a new auction: Not the correct previous owner of token.", async () => {
@@ -90,7 +106,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     await expectRevert(
       auctionHouse.createAuction(
-        tokenId1,
+        tokenId,
         tokenRepo.address,
         "Selling One Token",
         timestamp + 10000,
@@ -109,20 +125,20 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     let timestamp = new Date().getTime();
     let result = await auctionHouse.createAuction(
-      tokenId1,
+      tokenId,
       tokenRepo.address,
       "Selling One Token",
       timestamp + 10000,
       timestamp + 30000,
       { from: accounts[0] }
     );
-    auctionId0 = result.logs[0].args[0].toNumber();
+    auctionId = result.logs[0].args[0].toNumber();
 
     auctionLength = await auctionHouse.getAuctionsCount();
     expect(auctionLength.toNumber()).to.be.equal(1);
 
-    let auction = await auctionHouse.getAuctionById(auctionId0);
-    expect(auction[0].toNumber()).to.be.equal(tokenId1);
+    let auction = await auctionHouse.getAuctionById(auctionId);
+    expect(auction[0].toNumber()).to.be.equal(tokenId);
     expect(auction[1]).to.be.equal(tokenRepo.address);
     expect(auction[2]).to.be.equal("Selling One Token");
     expect(auction[3]).to.be.equal(accounts[0]);
@@ -130,22 +146,24 @@ contract("VickreyAuctionHouse", async (accounts) => {
     expect(auction[5]).to.be.equal(false);
     expect(auction[6].toNumber()).to.be.equal(timestamp + 10000);
     expect(auction[7].toNumber()).to.be.equal(timestamp + 30000);
-    expect(auction[8]).to.be.equal("0x0000000000000000000000000000000000000000");
+    expect(auction[8]).to.be.equal(
+      "0x0000000000000000000000000000000000000000"
+    );
     expect(auction[9].toNumber()).to.be.equal(0);
     expect(auction[10].toNumber()).to.be.equal(0);
   });
 
   it("It should cancel an auction.", async () => {
-    let auction = await auctionHouse.getAuctionById(auctionId0);
+    let auction = await auctionHouse.getAuctionById(auctionId);
     expect(auction[4]).to.be.equal(true);
     expect(auction[5]).to.be.equal(false);
 
     await auctionHouse.cancelAuction(0);
-    let tokenOwner = await tokenRepo.ownerOf(tokenId1);
+    let tokenOwner = await tokenRepo.ownerOf(tokenId);
 
     expect(tokenOwner).to.be.equal(accounts[0]);
 
-    auction = await auctionHouse.getAuctionById(auctionId0);
+    auction = await auctionHouse.getAuctionById(auctionId);
 
     expect(auction[4]).to.be.equal(false);
     expect(auction[5]).to.be.equal(true);
@@ -153,18 +171,14 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
   it("It should bid on an auction.", async () => {
     let auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      1,
-      "Auction Count should be 1"
-    );
-    tokenRepo.safeTransferFrom(accounts[0], auctionHouse.address, tokenId1, {
+    expect(auctionLength.toNumber()).to.be.equal(1);
+    tokenRepo.safeTransferFrom(accounts[0], auctionHouse.address, tokenId, {
       from: accounts[0],
     });
 
     let timestamp = new Date().getTime();
     let result = await auctionHouse.createAuction(
-      tokenId1,
+      tokenId,
       tokenRepo.address,
       "Selling One Token",
       timestamp + 10000,
@@ -172,86 +186,83 @@ contract("VickreyAuctionHouse", async (accounts) => {
       { from: accounts[0] }
     );
 
-    auctionId0 = result.logs[0].args[0].toNumber();
-    let bidCount = await auctionHouse.getBidCount(auctionId0);
-    assert.strictEqual(
-      bidCount.toNumber(),
-      0,
-      `Wrong amount of bids: ${bidCount}.`
-    );
+    auctionId = result.logs[0].args[0].toNumber();
+    let bidCount = await auctionHouse.getBidCount(auctionId);
+    expect(bidCount.toNumber()).to.be.equal(0);
     auctionLength = await auctionHouse.getAuctionsCount();
-    assert.strictEqual(
-      auctionLength.toNumber(),
-      2,
-      "Auction Count should be 1"
-    );
-    sealedBid= soliditySha3(
-      { t: "uint", v: 1 },
-      { t: "string", v: "01234" }
-    );
+    expect(auctionLength.toNumber()).to.be.equal(2);
+    expect(bids.length).to.be.equal(secrets.length);
+    expect(deposits.length).to.be.equal(secrets.length);
 
-    await auctionHouse.sealedBid(auctionId0, sealedBid, {
-      from: accounts[1],
-      value: 3,
-    });
+    var i;
+    var sumOfDeposits = 0;
+    for (i = 1; i < bids.length; i++) {
+      sealedBids[i] = getSealedBid(bids[i], secrets[i]);
+      sumOfDeposits += deposits[i];
+      await balanceContractTracker.delta();
+      await balanceTracker[i].delta();
 
-    sealedBid = soliditySha3({ t: "uint", v: 3 }, { t: "string", v: "0134" });
+      let result = await auctionHouse.sealedBid(auctionId, sealedBids[i], {
+        from: accounts[i],
+        value: deposits[i],
+      });
 
-    await auctionHouse.sealedBid(auctionId0, sealedBid, {
-      from: accounts[2],
-      value: 5,
-    });
+      let deltaAuctionHouse = await balanceContractTracker.delta();
 
-    bidCount = await auctionHouse.getBidCount(auctionId0);
-    assert.strictEqual(
-      bidCount.toNumber(),
-      2,
-      `Wrong amount of bids: ${bidCount}.`
-    );
+      // AuctionHouse has more money from deposits.
+      expect(deltaAuctionHouse.cmp(new BN(deposits[i]))).to.be.equal(0);
+
+      let delta = await balanceTracker[i].delta();
+      let payment = new BN(result.receipt.gasUsed)
+        .mul(gasPrice)
+        .add(new BN(deposits[i]));
+
+      // Bidder has less money than before bid.
+      expect(payment.cmp(delta.abs())).to.be.equal(0);
+    }
+    bidCount = await auctionHouse.getBidCount(auctionId);
+    expect(bidCount.toNumber()).to.be.equal(bids.length - 1);
   });
 
   it("It should not bid on own auction.", async () => {
-    let bidCount = await auctionHouse.getBidCount(auctionId0);
-    assert.strictEqual(
-      bidCount.toNumber(),
-      2,
-      `Wrong amount of bids: ${bidCount}.`
-    );
+    let bidCount = await auctionHouse.getBidCount(auctionId);
+    expect(bidCount.toNumber()).to.be.equal(bids.length - 1);
 
-    sealedBid = soliditySha3({ t: "uint", v: 2 }, { t: "string", v: "34" });
+    //sealedBid = soliditySha3({ t: "uint", v: 2 }, { t: "string", v: "34" });
+    sealedBids[0] = getSealedBid(bids[0], secrets[0]);
 
     await expectRevert(
-      auctionHouse.sealedBid(auctionId0, sealedBid, {
+      auctionHouse.sealedBid(auctionId, sealedBids[0], {
         from: accounts[0],
-        value: 2,
+        value: deposits[0],
       }),
       "The owner of an auction is not allowed to bid/reveal."
     );
 
-    bidCount = await auctionHouse.getBidCount(auctionId0);
-    assert.strictEqual(
-      bidCount.toNumber(),
-      2,
-      `Wrong amount of bids: ${bidCount}.`
-    );
+    bidCount = await auctionHouse.getBidCount(auctionId);
+    expect(bidCount.toNumber()).to.be.equal(bids.length - 1);
   });
 
   it("It should not reveal bid, auction still running.", async () => {
     await expectRevert(
-      auctionHouse.reveal(auctionId0, 2, "34", { from: accounts[1] }),
+      auctionHouse.reveal(auctionId, bids[1], secrets[1], {
+        from: accounts[1],
+      }),
       "Auction still running."
     );
   });
 
   it("It should not reveal bid, owner is not allowed to reveal.", async () => {
     await expectRevert(
-      auctionHouse.reveal(auctionId0, 2, "34", { from: accounts[0] }),
+      auctionHouse.reveal(auctionId, bids[0], secrets[0], {
+        from: accounts[0],
+      }),
       "The owner of an auction is not allowed to bid/reveal."
     );
   });
 
   it("it should end the bidding time.", async () => {
-    let auction = await auctionHouse.getAuctionById(auctionId0);
+    let auction = await auctionHouse.getAuctionById(auctionId);
     let timestamp = await time.latest();
 
     // How long does it take, until the auction is ended?
@@ -268,31 +279,119 @@ contract("VickreyAuctionHouse", async (accounts) => {
   });
 
   it("It should reveal bids.", async () => {
-    let refund = await auctionHouse.getRefund(accounts[1]);
-    expect(refund.toNumber()).to.be.equal(0);
+    var i;
+    for (i = 1; i < bids.length; i++) {
+      let refund = await auctionHouse.getRefund(accounts[i]);
+      expect(refund.toNumber()).to.be.equal(0);
 
-    await auctionHouse.reveal(auctionId0, 1, "01234", { from: accounts[1] });
-    refund = await auctionHouse.getRefund(accounts[1]);
-    expect(refund.toNumber()).to.be.equal(2);
-    let auction = await auctionHouse.getAuctionById(auctionId0);
-    expect(auction[8]).to.be.equal(accounts[1]);
-    expect(auction[9].toNumber()).to.be.equal(1);
+      await auctionHouse.reveal(auctionId, bids[i], secrets[i], {
+        from: accounts[i],
+      });
+      refund = await auctionHouse.getRefund(accounts[i]);
+      expect(refund.toNumber()).to.be.equal(deposits[i] - bids[i]);
 
-    auctionHouse.reveal(auctionId0, 3, "0134", { from: accounts[2] });
+      let auction = await auctionHouse.getAuctionById(auctionId);
+      expect(auction[8]).to.be.equal(accounts[i]);
+      expect(auction[9].toNumber()).to.be.equal(bids[i]);
+    }
+    /*
+    auctionHouse.reveal(auctionId, bids[2], secrets[2], { from: accounts[2] });
 
     refund = await auctionHouse.getRefund(accounts[1]);
     expect(refund.toNumber()).to.be.equal(3);
 
-    auction = await auctionHouse.getAuctionById(auctionId0);
+    auction = await auctionHouse.getAuctionById(auctionId);
     refund = await auctionHouse.getRefund(accounts[1]);
     expect(auction[8]).to.be.equal(accounts[2]);
     expect(auction[9].toNumber()).to.be.equal(3);
     expect(auction[10].toNumber()).to.be.equal(1);
+    */
   });
 
-  it("It should end an auction.", async () => {
-    let auction = await auctionHouse.getAuctionById(auctionId0);
+  it("it should end the reveal time.", async () => {
+    let auction = await auctionHouse.getAuctionById(auctionId);
+    let timestamp = await time.latest();
+
+    // How long does it take, until the auction is ended?
+    let timeleft = auction[7].toNumber() - timestamp;
+
+    // Manipulate the time in the Blockchain, so the auction is ended.
+    await time.increase(timeleft + 1);
+
+    timestamp = await time.latest();
+    timeleft = auction[7].toNumber() - timestamp;
+
+    // Expect the time left to be less than 0 seconds: Time over
+    expect(timeleft < 0).to.be.equal(true);
+  });
+
+  it("It should end an auction and transfer the token.", async () => {
+    let auction = await auctionHouse.getAuctionById(auctionId);
     expect(auction[4]).to.be.equal(true);
     expect(auction[5]).to.be.equal(false);
-  })
+
+    var refunds = [];
+    var i;
+    for (i = 0; i < bids.length; i++) {
+      refunds[i] = await auctionHouse.getRefund(accounts[i]);
+    }
+    expect(refunds[0].toNumber()).to.be.equal(0);
+    expect(refunds[1].toNumber()).to.be.equal(deposits[1]);
+    expect(refunds[2].toNumber()).to.be.equal(deposits[2]);
+    expect(refunds[3].toNumber()).to.be.equal(deposits[3]);
+    expect(refunds[4].toNumber()).to.be.equal(deposits[4] - bids[4]);
+
+    let tokenOwner = await tokenRepo.ownerOf(tokenId);
+    expect(tokenOwner).to.be.equal(auctionHouse.address);
+
+    await auctionHouse.endAuction(auctionId);
+    tokenOwner = await tokenRepo.ownerOf(tokenId);
+    expect(tokenOwner).to.be.equal(accounts[4]);
+
+    auction = await auctionHouse.getAuctionById(auctionId);
+    expect(auction[4]).to.be.equal(false);
+    expect(auction[5]).to.be.equal(true);
+  });
+
+  it("It should withdraw the money.", async () => {
+    //let auction = await auctionHouse.getAuctionById(auctionId);
+    await balanceContractTracker.delta();
+    let gasCosts = [];
+    let deltas = [];
+    var i;
+    for (i = 0; i < bids.length; i++) {
+      await balanceTracker[i].delta();
+      let result = await auctionHouse.withdraw({ from: accounts[i] });
+      gasCosts[i] = new BN(result.receipt.gasUsed).mul(gasPrice);
+      deltas[i] = await balanceTracker[i].delta();
+    }
+
+    // Seller gets the second highes bid, but has to pay the gas.
+    expect(
+      new BN(bids[3]).sub(gasCosts[0]).abs().cmp(deltas[0].abs())
+    ).to.be.equal(0);
+
+    // Bidders get their deposits, but have to pay the gas.
+    expect(
+      new BN(deposits[1]).sub(gasCosts[1]).abs().cmp(deltas[1].abs())
+    ).to.be.equal(0);
+    expect(
+      new BN(deposits[2]).sub(gasCosts[2]).abs().cmp(deltas[2].abs())
+    ).to.be.equal(0);
+    expect(
+      new BN(deposits[3]).sub(gasCosts[3]).abs().cmp(deltas[3].abs())
+    ).to.be.equal(0);
+
+    // Highest Bidder gets the difference of the deposit and the second highest bid.
+    expect(
+      new BN(deposits[4])
+        .sub(new BN(bids[3]))
+        .sub(gasCosts[4])
+        .abs()
+        .cmp(deltas[4].abs())
+    ).to.be.equal(0);
+
+    let balanceContract = await balanceContractTracker.get();
+    expect(balanceContract.cmp(new BN(0))).to.be.equal(0);
+  });
 });

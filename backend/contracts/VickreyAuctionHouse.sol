@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// @author Artur Dick
 pragma solidity >=0.5.0 <0.7.0;
 import "../node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "../node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -47,11 +48,11 @@ contract VickreyAuctionHouse is IERC721Receiver {
         uint256 secondHighestBid;
     }
     modifier onlyBefore(uint256 _time) {
-        require(now < _time, "Auction is not running.");
+        require(block.timestamp < _time, "Auction is not running.");
         _;
     }
     modifier onlyAfter(uint256 _time) {
-        require(now > _time, "Auction still running.");
+        require(block.timestamp > _time, "Auction still running.");
         _;
     }
 
@@ -241,25 +242,23 @@ contract VickreyAuctionHouse is IERC721Receiver {
      * @param _auctionId uint ID of the created auction
      */
     function cancelAuction(uint256 _auctionId) public isOwner(_auctionId) {
-        Auction memory myAuction = auctions[_auctionId];
         require(
-            myAuction.active &&
-                !myAuction.finalized &&
-                myAuction.highestBidder == address(0) &&
-                myAuction.highestBid == 0 &&
-                myAuction.secondHighestBid == 0,
+            auctions[_auctionId].active &&
+                !auctions[_auctionId].finalized &&
+                auctions[_auctionId].highestBidder == address(0) &&
+                auctions[_auctionId].highestBid == 0 &&
+                auctions[_auctionId].secondHighestBid == 0,
             "Auction is running"
         );
 
-        myAuction.active = false;
-        myAuction.finalized = true;
+        auctions[_auctionId].active = false;
+        auctions[_auctionId].finalized = true;
         approveAndTransfer(
             address(this),
-            myAuction.owner,
-            myAuction.tokenRepositoryAddress,
-            myAuction.tokenId
+            auctions[_auctionId].owner,
+            auctions[_auctionId].tokenRepositoryAddress,
+            auctions[_auctionId].tokenId
         );
-        auctions[_auctionId] = myAuction;
     }
 
     /**
@@ -347,6 +346,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     // Withdraw a bid that was overbid.
     function withdraw() public {
         uint256 amount = refunds[msg.sender];
+        require(amount > 0, "No money to withdraw");
         if (amount > 0) {
             // It is important to set this to zero because the recipient
             // can call this function again as part of the receiving call
@@ -359,18 +359,25 @@ contract VickreyAuctionHouse is IERC721Receiver {
 
     // End the auction and send the highest bid
     // to the beneficiary.
-    function auctionEnd(uint256 _auctionId)
+    function endAuction(uint256 _auctionId)
         public
         onlyAfter(auctions[_auctionId].revealEnd)
     {
-        require(!auctions[_auctionId].active, "Auction is already ended.");
+        require(auctions[_auctionId].active, "Auction is already ended.");
         emit AuctionEnded(_auctionId, auctions[_auctionId].highestBidder);
-        auctions[_auctionId].active = true;
+        auctions[_auctionId].active = false;
+        auctions[_auctionId].finalized = true;
         refunds[auctions[_auctionId].owner] += auctions[_auctionId]
             .secondHighestBid;
         refunds[auctions[_auctionId].highestBidder] +=
             auctions[_auctionId].highestBid -
             auctions[_auctionId].secondHighestBid;
+        approveAndTransfer(
+            address(this),
+            auctions[_auctionId].highestBidder,
+            auctions[_auctionId].tokenRepositoryAddress,
+            auctions[_auctionId].tokenId
+        );
     }
 
     function getRefund(address _bidder) public view returns (uint256) {
