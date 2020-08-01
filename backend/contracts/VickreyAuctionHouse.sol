@@ -8,7 +8,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /**The event that is called, if the contract
     receives an Token.
      */
-    event ReceivedToken(
+  event ReceivedToken(
         address operator,
         address from,
         uint256 tokenId,
@@ -28,6 +28,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     }
 
     Auction[] public auctions;
+
     struct Bid {
         address from;
         bytes32 blindedBid;
@@ -100,9 +101,9 @@ contract VickreyAuctionHouse is IERC721Receiver {
     }
     event BidSuccess(uint256 _auctionId, address _from);
     event RevealSuccess(uint256 _auctionId, address _from);
-    event AuctionCreated(uint256 auctionId, address _owner);
+    event AuctionCreated(uint256 _auctionId, address _owner);
     event AuctionEnded(uint256 _auctionId, address _winner);
-    event AuctioNCanceled(uint256 _auctionId);
+    event AuctionCanceled(uint256 _auctionId);
 
     mapping(uint256 => address) previousOwner;
 
@@ -315,10 +316,10 @@ contract VickreyAuctionHouse is IERC721Receiver {
     // derived contracts).
     function placeBid(
         uint256 _auctionId,
-        address bidder,
-        uint256 value
+        address _bidder,
+        uint256 _value
     ) internal returns (bool success) {
-        if (value <= auctions[_auctionId].highestBid) {
+        if (_value <= auctions[_auctionId].highestBid) {
             return false;
         }
         if (auctions[_auctionId].highestBidder != address(0)) {
@@ -327,13 +328,13 @@ contract VickreyAuctionHouse is IERC721Receiver {
                 .highestBid;
         }
         if (auctions[_auctionId].secondHighestBid == 0) {
-            auctions[_auctionId].secondHighestBid = value;
+            auctions[_auctionId].secondHighestBid = _value;
         } else {
             auctions[_auctionId].secondHighestBid = auctions[_auctionId]
                 .highestBid;
         }
-        auctions[_auctionId].highestBid = value;
-        auctions[_auctionId].highestBidder = bidder;
+        auctions[_auctionId].highestBid = _value;
+        auctions[_auctionId].highestBidder = _bidder;
         return true;
     }
 
