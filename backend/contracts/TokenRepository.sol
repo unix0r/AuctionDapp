@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT
+// @author Artur Dick
 pragma solidity >=0.5.0 <0.7.0;
 
 //import "@openzeppelin/contracts/token/ERC721/ERC721Full.sol";
 import "../node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract TokenRepository is ERC721 {
-    address payable _owner;
+    address _owner;
 
     constructor() public ERC721("EmissionRight", "Carbondioxid") {
         _owner = msg.sender;
