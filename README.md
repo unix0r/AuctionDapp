@@ -7,16 +7,16 @@ And examples of the mastering ethereum book: <https://github.com/ethereumbook/et
 
 For a copy of the masterthesis (in german) feel free to contact me.
 
-# Instructions
+## Instructions
 Install dependencies:
 
 sudo apt update ; sudo apt install nodejs npm git
 
 sudo npm install -g truffle @openzeppelin/contracts truffle-assertions
 
-Download Ganache https://www.trufflesuite.com/ganache
+Download Ganache <https://www.trufflesuite.com/ganache>
 
-git clone https://github.com/unix0r/AuctionDapp
+git clone <https://github.com/unix0r/AuctionDapp>
 
 cd AuctionDapp/backend
 
