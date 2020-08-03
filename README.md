@@ -5,7 +5,7 @@ This project implements the concepts for decentralized auction houses of my mast
 The work is influenced by the example of the solidity documentation: <https://solidity.readthedocs.io/en/latest/solidity-by-example.html#blind-auction>
 And examples of the mastering ethereum book: <https://github.com/ethereumbook/ethereumbook/tree/develop/code/auction_dapp>
 
-![Image of Yaktocat](SSPA.svg)
+![Vickrey Auction](SSPA.svg)
 
 For a copy of the masterthesis (in german) feel free to contact me.
 
