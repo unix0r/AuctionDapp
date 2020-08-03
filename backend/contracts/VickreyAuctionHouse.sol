@@ -123,7 +123,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
     event BidSuccess(uint256 _auctionId, address _from);
-    event RevealSuccess(uint256 _auctionId, address _from);
+    event RevealedBid(uint256 _auctionId, address _from);
     event AuctionCreated(uint256 _auctionId, address _owner);
     event AuctionEnded(uint256 _auctionId, address _winner);
     event AuctionCanceled(uint256 _auctionId);
@@ -265,14 +265,16 @@ contract VickreyAuctionHouse is IERC721Receiver {
      */
     function cancelAuction(uint256 _auctionId) public isOwner(_auctionId) {
         require(auctions[_auctionId].active == true, "Auction is not alive.");
-        require(auctionBids[_auctionId].length == 0, "There are already bids in this auction.");
+        require(
+            auctionBids[_auctionId].length == 0,
+            "There are already bids in this auction."
+        );
         require(
             auctions[_auctionId].highestBidder == address(0) &&
                 auctions[_auctionId].highestBid == 0 &&
                 auctions[_auctionId].secondHighestBid == 0,
             "There are already bids in this auction."
         );
-
 
         auctions[_auctionId].active = false;
         approveAndTransfer(
@@ -335,7 +337,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         if (bid.deposit >= _value) {
             if (placeBid(_auctionId, msg.sender, _value)) refund -= _value;
         }
-        emit RevealSuccess(_auctionId, msg.sender);
+        emit RevealedBid(_auctionId, msg.sender);
         bid.blindedBid = bytes32(0);
         refunds[msg.sender] += refund;
     }
@@ -390,6 +392,14 @@ contract VickreyAuctionHouse is IERC721Receiver {
     {
         emit AuctionEnded(_auctionId, auctions[_auctionId].highestBidder);
         auctions[_auctionId].active = false;
+        if (auctions[_auctionId].highestBidder == address(0)){
+        approveAndTransfer(
+            address(this),
+            auctions[_auctionId].owner,
+            auctions[_auctionId].tokenRepositoryAddress,
+            auctions[_auctionId].tokenId
+        );
+        } else {
         refunds[auctions[_auctionId].owner] += auctions[_auctionId]
             .secondHighestBid;
         refunds[auctions[_auctionId].highestBidder] +=
@@ -401,6 +411,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
             auctions[_auctionId].tokenRepositoryAddress,
             auctions[_auctionId].tokenId
         );
+        }
     }
 
     function getRefund(address _bidder) public view returns (uint256) {

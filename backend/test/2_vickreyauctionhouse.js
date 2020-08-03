@@ -217,7 +217,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
     let auction = await auctionHouse.getAuctionById(auctionId);
     expect(auction[4]).to.be.equal(true);
 
-    await auctionHouse.cancelAuction(0);
+    await auctionHouse.cancelAuction(auctionId);
     let tokenOwner = await tokenRepo.ownerOf(tokenId);
     expect(tokenOwner).to.be.equal(accounts[0]);
 
@@ -580,5 +580,65 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     let balanceContract = await balanceContractTracker.get();
     expect(balanceContract.cmp(new BN(0))).to.be.equal(0);
+  });
+
+  it("It should not take a revealed bid: Deposit not enough.", async () => {
+    tokenRepo.safeTransferFrom(accounts[4], auctionHouse.address, tokenId, {
+      from: accounts[4],
+    });
+
+    await time.advanceBlock();
+    let timestamp = await time.latest();
+    let result = await auctionHouse.createAuction(
+      tokenId,
+      tokenRepo.address,
+      "Selling One Token",
+      timestamp.add(new BN(10000)).toNumber(),
+      timestamp.add(new BN(30000)).toNumber(),
+      { from: accounts[4] }
+    );
+
+    auctionId = result.logs[0].args[0].toNumber();
+
+    let badBid = getSealedBid(13, "secret");
+    result = await auctionHouse.sealedBid(auctionId, badBid, {
+      from: accounts[5],
+      value: 10,
+    });
+    let refund = await auctionHouse.getRefund(accounts[5]);
+    expect(refund.toNumber()).to.be.equal(0);
+
+    let auction = await auctionHouse.getAuctionById(auctionId);
+    timestamp = await time.latest();
+
+    // How long does it take, until the auction is ended?
+    let timeleft = auction[5].toNumber() - timestamp;
+
+    // Manipulate the time in the Blockchain, so the auction is ended.
+    await time.increase(timeleft + 1);
+
+    await auctionHouse.reveal(auctionId, 13, "secret", {
+      from: accounts[5],
+    });
+    auction = await auctionHouse.getAuctionById(auctionId);
+    refund = await auctionHouse.getRefund(accounts[5]);
+    expect(refund.toNumber()).to.be.equal(10);
+
+    expect(auction[7]).to.be.equal(
+      "0x0000000000000000000000000000000000000000"
+    );
+    expect(auction[8].toNumber()).to.be.equal(0);
+    expect(auction[9].toNumber()).to.be.equal(0);
+
+    timestamp = await time.latest();
+    // How long does it take, until the auction is ended?
+    timeleft = auction[6].toNumber() - timestamp;
+    // Manipulate the time in the Blockchain, so the auction is ended.
+    await time.increase(timeleft + 1);
+
+    await auctionHouse.endAuction(auctionId);
+
+    let tokenOwner = await tokenRepo.ownerOf(tokenId);
+    expect(tokenOwner).to.be.equal(accounts[4]);
   });
 });
