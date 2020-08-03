@@ -8,7 +8,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /**The event that is called, if the contract
     receives an Token.
      */
-  event ReceivedToken(
+    event ReceivedToken(
         address operator,
         address from,
         uint256 tokenId,
@@ -26,8 +26,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
         emit ReceivedToken(_operator, _from, _tokenId, _data, gasleft());
         return 0x150b7a02;
     }
-
-    Auction[] public auctions;
 
     struct Bid {
         address from;
@@ -47,6 +45,21 @@ contract VickreyAuctionHouse is IERC721Receiver {
         uint256 highestBid;
         uint256 secondHighestBid;
     }
+
+    //All auctions.
+    Auction[] public auctions;
+
+    // Mapping auctionID to users Bids.
+    mapping(uint256 => Bid[]) public auctionBids;
+
+    modifier isActive(uint256 _auctionId) {
+        require(
+            auctions[_auctionId].active == true,
+            "The auction is not active."
+        );
+        _;
+    }
+
     modifier onlyBefore(uint256 _time) {
         require(block.timestamp < _time, "Auction is not running.");
         _;
@@ -63,7 +76,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     modifier isOwner(uint256 _auctionId) {
         require(
             auctions[_auctionId].owner == msg.sender,
-            "Not the correct owner of the auction"
+            "Not the correct owner of the auction."
         );
         _;
     }
@@ -80,10 +93,20 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
+    modifier didNotBid(uint256 _auctionId) {
+        for (uint256 i = 0; i < auctionBids[_auctionId].length; i++) {
+            require(
+                auctionBids[_auctionId][i].from != msg.sender,
+                "User has already bid on this auction."
+            );
+        }
+        _;
+    }
+
     modifier correctOwnerOfToken(address _creator, uint256 _tokenId) {
         require(
             _creator == previousOwner[_tokenId],
-            "Not the correct previous owner of this token"
+            "Not the correct previous owner of this token."
         );
         _;
     }
@@ -95,7 +118,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         address deedOwner = ERC721(_tokenRepositoryAddress).ownerOf(_tokenId);
         require(
             deedOwner == address(this),
-            "Contract is not the owner of token"
+            "Contract is not the owner of token."
         );
         _;
     }
@@ -106,12 +129,6 @@ contract VickreyAuctionHouse is IERC721Receiver {
     event AuctionCanceled(uint256 _auctionId);
 
     mapping(uint256 => address) previousOwner;
-
-    // Every Address refers to one bid
-    mapping(address => Bid) bids;
-
-    // Mapping auctionID to users Bids.
-    mapping(uint256 => Bid[]) public auctionBids;
 
     // Mapping from owner to a list of owned auctions
     mapping(address => uint256[]) public auctionOwner;
@@ -166,6 +183,14 @@ contract VickreyAuctionHouse is IERC721Receiver {
         correctOwnerOfToken(msg.sender, _tokenId)
         returns (uint256)
     {
+        require(
+            _biddingEnd > block.timestamp,
+            "Bidding Time is alreay finished."
+        );
+        require(
+            _revealEnd > _biddingEnd,
+            "Reveal Time must end after Bidding Time."
+        );
         uint256 auctionId = auctions.length;
         Auction memory newAuction;
         newAuction.tokenId = _tokenId;
@@ -239,13 +264,15 @@ contract VickreyAuctionHouse is IERC721Receiver {
      * @param _auctionId uint ID of the created auction
      */
     function cancelAuction(uint256 _auctionId) public isOwner(_auctionId) {
+        require(auctions[_auctionId].active == true, "Auction is not alive.");
+        require(auctionBids[_auctionId].length == 0, "There are already bids in this auction.");
         require(
-            auctions[_auctionId].active &&
-                auctions[_auctionId].highestBidder == address(0) &&
+            auctions[_auctionId].highestBidder == address(0) &&
                 auctions[_auctionId].highestBid == 0 &&
                 auctions[_auctionId].secondHighestBid == 0,
-            "Auction is running"
+            "There are already bids in this auction."
         );
+
 
         auctions[_auctionId].active = false;
         approveAndTransfer(
@@ -259,14 +286,15 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /**
      * @dev Bidder sends bid on an auction
      * @dev Auction should be active and not ended
-     * @dev Refund previous bidder if a new bid is valid and placed.
      * @param _auctionId uint ID of the created auction
      */
     function sealedBid(uint256 _auctionId, bytes32 _blindedBid)
         public
         payable
         onlyBefore(auctions[_auctionId].biddingEnd)
+        didNotBid(_auctionId)
         isNotOwner(_auctionId)
+        isActive(_auctionId)
     {
         auctionBids[_auctionId].push(
             Bid({from: msg.sender, blindedBid: _blindedBid, deposit: msg.value})
@@ -286,6 +314,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         isNotOwner(_auctionId)
         onlyAfter(auctions[_auctionId].biddingEnd)
         onlyBefore(auctions[_auctionId].revealEnd)
+        isActive(_auctionId)
     {
         uint256 refund;
         Bid storage bid;
@@ -341,7 +370,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     // Withdraw a bid that was overbid.
     function withdraw() public {
         uint256 amount = refunds[msg.sender];
-        require(amount > 0, "No money to withdraw");
+        require(amount > 0, "No money to withdraw.");
         if (amount > 0) {
             // It is important to set this to zero because the recipient
             // can call this function again as part of the receiving call
@@ -357,8 +386,8 @@ contract VickreyAuctionHouse is IERC721Receiver {
     function endAuction(uint256 _auctionId)
         public
         onlyAfter(auctions[_auctionId].revealEnd)
+        isActive(_auctionId)
     {
-        require(auctions[_auctionId].active, "Auction is already ended.");
         emit AuctionEnded(_auctionId, auctions[_auctionId].highestBidder);
         auctions[_auctionId].active = false;
         refunds[auctions[_auctionId].owner] += auctions[_auctionId]
