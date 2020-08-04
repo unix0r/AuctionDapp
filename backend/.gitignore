@@ -2,3 +2,4 @@ build/
 test/output.address
 blockchain.eth
 accounts.keys
+node_modules/
