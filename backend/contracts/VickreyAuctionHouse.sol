@@ -160,7 +160,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         uint256 gas
     );
 
-    /// Implentation of the Interface function to receive ERC721 Tokens
+    /// @dev Implentation of the Interface function to receive ERC721 Tokens
     function onERC721Received(
         address _operator,
         address _from,
@@ -172,33 +172,13 @@ contract VickreyAuctionHouse is IERC721Receiver {
         return 0x150b7a02;
     }
 
-    /**
-     * @dev Gets an array of owned auctions
-     * @param _owner address of the auction owner
-     */
-
-    /**
-     * @dev Gets the total number of auctions owned by an address
-     * @param _owner address of the owner
-     * @return uint total number of auctions
-     */
-    function getAuctionsCountOfOwner(address _owner)
-        public
-        view
-        returns (uint256)
-    {
-        return auctionOwner[_owner].length;
-    }
-
-    /**
-     * @dev Creates an auction with the given informatin
-     * @param _tokenRepositoryAddress address of the DeedRepository contract
-     * @param _tokenId uint256 of the deed registered in DeedRepository
-     * @param _metadata string containing auction metadata
-     * @param _biddingEnd End of the bidding phase
-     * @param _revealEnd End of the revealing phase
-     * @return bool whether the auction is created
-     */
+    /// @dev Creates an auction with the given information
+    /// @param _tokenId uint256 of the deed registered in DeedRepository
+    /// @param _tokenRepositoryAddress address of the DeedRepository contract
+    /// @param _metadata string containing auction metadata
+    /// @param _biddingEnd End of the bidding phase
+    /// @param _revealEnd End of the revealing phase
+    /// @return uint256 The ID of the created auction
     function createAuction(
         uint256 _tokenId,
         address _tokenRepositoryAddress,
@@ -234,26 +214,40 @@ contract VickreyAuctionHouse is IERC721Receiver {
         return auctionId;
     }
 
+    /// @dev Returns the amount of auctions
+    /// @return uint256, the length of the auction array
     function getAuctionsCount() public view returns (uint256) {
         return auctions.length;
     }
 
+    /// @dev internal function to move the token to another user
+    /// @param _from The source address of the token
+    /// @param _to The destination address of the token
+    /// @param _tokenRepositoryAddress The Repository Address of the Token
+    /// @param _tokenId The ID of the token.
     function approveAndTransfer(
         address _from,
         address _to,
         address _tokenRepositoryAddress,
-        uint256 _deedId
-    ) internal returns (bool) {
+        uint256 _tokenId
+    ) internal {
         ERC721 remoteContract = ERC721(_tokenRepositoryAddress);
-        remoteContract.approve(_to, _deedId);
-        remoteContract.transferFrom(_from, _to, _deedId);
-        return true;
+        remoteContract.approve(_to, _tokenId);
+        remoteContract.transferFrom(_from, _to, _tokenId);
     }
 
-    /**
-     * @dev Gets the info of a given auction which are stored within a struct
-     * @param _auctionId uint ID of the auction
-     */
+    /// @dev Returns the information of an auction
+    /// @param _auctionId ID of the auction
+    /// @return tokenId ID of the Token
+    /// @return tokenRepositoryAddress The Repository Address of the Token
+    /// @return metadata Metadata of the auction
+    /// @return owner The address of the owner/seller
+    /// @return active Boolean flag for the status of the auction
+    /// @return biddingEnd The end of the bidding time period
+    /// @return revealEnd The end of the reveal time period
+    /// @return highestBidder The address of the current highest Bidder
+    /// @return highestBid The Bid of the highest Bidder
+    /// @return secondHighestBid The second highest Bid
     function getAuctionById(uint256 _auctionId)
         public
         view
@@ -285,12 +279,8 @@ contract VickreyAuctionHouse is IERC721Receiver {
         );
     }
 
-    /**
-     * @dev Cancels an ongoing auction by the owner
-     * @dev Token is transfered back to the auction owner
-     * @dev Only if there are no bids.
-     * @param _auctionId uint ID of the created auction
-     */
+    /// @dev Cancels an auction, if its alive and there are no bidders.
+    /// @param _auctionId The ID of the auction.
     function cancelAuction(uint256 _auctionId) public isOwner(_auctionId) {
         require(auctions[_auctionId].active == true, "Auction is not alive.");
         require(
@@ -313,11 +303,10 @@ contract VickreyAuctionHouse is IERC721Receiver {
         );
     }
 
-    /**
-     * @dev Bidder sends bid on an auction
-     * @dev Auction should be active and not ended
-     * @param _auctionId uint ID of the created auction
-     */
+    /// @dev Sending an encrypted, sealed Bid for an auction
+    /// @dev Payable: the bidders are sending a deposit with their secret bid
+    /// @param _auctionId The ID of the auction
+    /// @param _blindedBid The encrypted Bid containing the value and secret
     function sealedBid(uint256 _auctionId, bytes32 _blindedBid)
         public
         payable
@@ -332,9 +321,11 @@ contract VickreyAuctionHouse is IERC721Receiver {
         emit BidSuccess(_auctionId, msg.sender);
     }
 
-    /// Reveal your blinded bids. You will get a refund for all
-    /// correctly blinded invalid bids and for all bids except for
-    /// the totally highest.
+    /// @dev Reveal a blinded Bid, the difference to the deposit is added to a refund
+    /// @dev The deposit is locked if the bidder wont reveeal the bid.
+    /// @param _auctionId The ID of the auction
+    /// @param _value The value of the Bid
+    /// @param _secret The secret of the encrypted Bid
     function reveal(
         uint256 _auctionId,
         uint256 _value,
@@ -370,9 +361,11 @@ contract VickreyAuctionHouse is IERC721Receiver {
         refunds[msg.sender] += refund;
     }
 
-    // This is an "internal" function which means that it
-    // can only be called from the contract itself (or from
-    // derived contracts).
+    /// @dev Internal function to check correct revealed bids
+    /// @param _auctionId The ID of the auction
+    /// @param _bidder The address of the bidder
+    /// @param _value The bid of the bidder
+    /// @return success If the deposit was high enough for the bid
     function placeBid(
         uint256 _auctionId,
         address _bidder,
@@ -397,22 +390,21 @@ contract VickreyAuctionHouse is IERC721Receiver {
         return true;
     }
 
-    // Withdraw a bid that was overbid.
+    /// @dev Withdraw a refund or the revenue
     function withdraw() public {
         uint256 amount = refunds[msg.sender];
         require(amount > 0, "No money to withdraw.");
         if (amount > 0) {
-            // It is important to set this to zero because the recipient
-            // can call this function again as part of the receiving call
-            // before `transfer` returns (see the remark above about
-            // conditions -> effects -> interaction).
+            // Important to set this to zero.
             refunds[msg.sender] = 0;
             msg.sender.transfer(amount);
         }
     }
 
-    // End the auction and send the highest bid
-    // to the beneficiary.
+    /// @dev End an auction
+    /// @dev Transfers the token to the highest Bidder or back to the seller
+    /// @dev Transfers the difference between the highest and second Highest Bid to the seller
+    /// @param _auctionId The ID of the auction
     function endAuction(uint256 _auctionId)
         public
         onlyAfter(auctions[_auctionId].revealEnd)
@@ -442,10 +434,16 @@ contract VickreyAuctionHouse is IERC721Receiver {
         }
     }
 
+    /// @dev Gets the refund of an address
+    /// @param _bidder The address to be checked
+    /// @return The amount of refund of this address
     function getRefund(address _bidder) public view returns (uint256) {
         return refunds[_bidder];
     }
 
+    /// @dev Gets the current amount of blindedBids of this auction
+    /// @param _auctionId The ID of the auction
+    /// @return The amount of blinded bids in this auction
     function getBidCount(uint256 _auctionId) public view returns (uint256) {
         return auctionBids[_auctionId].length;
     }
