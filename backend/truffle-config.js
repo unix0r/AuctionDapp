@@ -12,13 +12,7 @@ module.exports = {
   //Compiler to compile Smart Contracts
   compilers: {
     solc: {
-      version: "native",// Use native installed solc compiler
-      settings: {
-        optimizer: {
-          enabled: true, 
-          runs: 200    
-        }
-      }
+      version: "^0.6.12"// Fetch exact version from solc-bin
     }
   }
 };
