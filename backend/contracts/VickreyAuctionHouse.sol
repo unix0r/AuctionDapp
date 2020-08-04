@@ -1,38 +1,22 @@
 // SPDX-License-Identifier: MIT
-// @author Artur Dick
+// @author Artur Dick  <artur.dick[at]mailbox.org>
+
 pragma solidity >=0.5.0 <0.7.0;
-import "../node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "../node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
+/// Import ERC721 Interfaces of the openzeppelin project
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
+/// The Smart Contract for the simultaneous second price auction (Vickrey Auction)
 contract VickreyAuctionHouse is IERC721Receiver {
-    /**The event that is called, if the contract
-    receives an Token.
-     */
-    event ReceivedToken(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes data,
-        uint256 gas
-    );
-
-    function onERC721Received(
-        address _operator,
-        address _from,
-        uint256 _tokenId,
-        bytes memory _data
-    ) public override(IERC721Receiver) returns (bytes4 value) {
-        previousOwner[_tokenId] = _from;
-        emit ReceivedToken(_operator, _from, _tokenId, _data, gasleft());
-        return 0x150b7a02;
-    }
-
+    // Struct containing information about a sealed bid
     struct Bid {
         address from;
         bytes32 blindedBid;
         uint256 deposit;
     }
 
+    // Struct containing information about an auction
     struct Auction {
         uint256 tokenId;
         address tokenRepositoryAddress;
@@ -46,12 +30,23 @@ contract VickreyAuctionHouse is IERC721Receiver {
         uint256 secondHighestBid;
     }
 
-    //All auctions.
+    //Array for all auctions
     Auction[] public auctions;
 
-    // Mapping auctionID to users Bids.
+    // Mapping auctionID to users Bids
     mapping(uint256 => Bid[]) public auctionBids;
 
+    // Mapping TokenID to previous Owner
+    mapping(uint256 => address) previousOwner;
+
+    // Mapping from user to a list of auctions
+    mapping(address => uint256[]) public auctionOwner;
+
+    // Allowed withdrawals
+    mapping(address => uint256) refunds;
+
+    /// @dev Guarantees an active auction
+    /// @param _auctionId given auction.
     modifier isActive(uint256 _auctionId) {
         require(
             auctions[_auctionId].active == true,
@@ -60,19 +55,22 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
+    /// @dev Guarantees current time is before _time
+    /// @param _time Time to be checked
     modifier onlyBefore(uint256 _time) {
         require(block.timestamp < _time, "Auction is not running.");
         _;
     }
+
+    /// @dev Guarantees current time is after _time
+    /// @param _time Time to be checked
     modifier onlyAfter(uint256 _time) {
         require(block.timestamp > _time, "Auction still running.");
         _;
     }
 
-    /**
-     * @dev Guarantees msg.sender is owner of the given auction
-     * @param _auctionId uint ID of the auction to validate its ownership belongs to msg.sender
-     */
+    /// @dev Guarantees msg.sender is owner of the given auction
+    /// @param _auctionId uint ID of the auction to validate its ownership belongs to msg.sender
     modifier isOwner(uint256 _auctionId) {
         require(
             auctions[_auctionId].owner == msg.sender,
@@ -81,10 +79,8 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
-    /**
-     * @dev Guarantees msg.sender is owner of the given auction
-     * @param _auctionId uint ID of the auction to validate its ownership belongs to msg.sender
-     */
+    /// @dev Guarantees msg.sender is not owner of the given auction
+    /// @param _auctionId uint ID of the auction to validate its ownership belongs not to msg.sender
     modifier isNotOwner(uint256 _auctionId) {
         require(
             auctions[_auctionId].owner != msg.sender,
@@ -93,6 +89,8 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
+    /// @dev Guarantees msg.sender did not already bid on given auction
+    /// @param _auctionId The auction to be checked
     modifier didNotBid(uint256 _auctionId) {
         for (uint256 i = 0; i < auctionBids[_auctionId].length; i++) {
             require(
@@ -103,6 +101,9 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
+    /// @dev Guarantees that the _creator was the old owner of _tokenId
+    /// @param _creator Address of the old owner
+    /// @param _tokenId TokenID
     modifier correctOwnerOfToken(address _creator, uint256 _tokenId) {
         require(
             _creator == previousOwner[_tokenId],
@@ -111,6 +112,9 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
+    /// @dev Guarantees that this contract is the owner of a token
+    /// @param _tokenRepositoryAddress The Repository of the Token
+    /// @param _tokenId The TokenID
     modifier contractIsTokenOwner(
         address _tokenRepositoryAddress,
         uint256 _tokenId
@@ -122,32 +126,56 @@ contract VickreyAuctionHouse is IERC721Receiver {
         );
         _;
     }
+
+    /// @dev Bid was successfull
+    /// @param _auctionId The auction
+    /// @param _from The bidder
     event BidSuccess(uint256 _auctionId, address _from);
+
+    /// @dev The bid was successfully revealed
+    /// @param _auctionId The auction
+    /// @param _from The bidder
     event RevealedBid(uint256 _auctionId, address _from);
+
+    /// @dev Auction was created
+    /// @param _auctionId The auction
+    /// @param _owner The owner of the auction
     event AuctionCreated(uint256 _auctionId, address _owner);
+
+    /// @dev The auction was ended
+    /// @param _auctionId The auction
+    /// @param _winner The winning bidder
     event AuctionEnded(uint256 _auctionId, address _winner);
+
+    /// @dev Auction was canceled
+    /// @param _auctionId The auction
     event AuctionCanceled(uint256 _auctionId);
 
-    mapping(uint256 => address) previousOwner;
+    /// @dev The contract received a token
+    event ReceivedToken(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes data,
+        uint256 gas
+    );
 
-    // Mapping from owner to a list of owned auctions
-    mapping(address => uint256[]) public auctionOwner;
-
-    // Allowed withdrawals of previous bids
-    mapping(address => uint256) refunds;
+    /// Implentation of the Interface function to receive ERC721 Tokens
+    function onERC721Received(
+        address _operator,
+        address _from,
+        uint256 _tokenId,
+        bytes memory _data
+    ) public override(IERC721Receiver) returns (bytes4 value) {
+        previousOwner[_tokenId] = _from;
+        emit ReceivedToken(_operator, _from, _tokenId, _data, gasleft());
+        return 0x150b7a02;
+    }
 
     /**
      * @dev Gets an array of owned auctions
      * @param _owner address of the auction owner
      */
-    function getAuctionsOf(address _owner)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory ownedAuctions = auctionOwner[_owner];
-        return ownedAuctions;
-    }
 
     /**
      * @dev Gets the total number of auctions owned by an address
@@ -392,25 +420,25 @@ contract VickreyAuctionHouse is IERC721Receiver {
     {
         emit AuctionEnded(_auctionId, auctions[_auctionId].highestBidder);
         auctions[_auctionId].active = false;
-        if (auctions[_auctionId].highestBidder == address(0)){
-        approveAndTransfer(
-            address(this),
-            auctions[_auctionId].owner,
-            auctions[_auctionId].tokenRepositoryAddress,
-            auctions[_auctionId].tokenId
-        );
+        if (auctions[_auctionId].highestBidder == address(0)) {
+            approveAndTransfer(
+                address(this),
+                auctions[_auctionId].owner,
+                auctions[_auctionId].tokenRepositoryAddress,
+                auctions[_auctionId].tokenId
+            );
         } else {
-        refunds[auctions[_auctionId].owner] += auctions[_auctionId]
-            .secondHighestBid;
-        refunds[auctions[_auctionId].highestBidder] +=
-            auctions[_auctionId].highestBid -
-            auctions[_auctionId].secondHighestBid;
-        approveAndTransfer(
-            address(this),
-            auctions[_auctionId].highestBidder,
-            auctions[_auctionId].tokenRepositoryAddress,
-            auctions[_auctionId].tokenId
-        );
+            refunds[auctions[_auctionId].owner] += auctions[_auctionId]
+                .secondHighestBid;
+            refunds[auctions[_auctionId].highestBidder] +=
+                auctions[_auctionId].highestBid -
+                auctions[_auctionId].secondHighestBid;
+            approveAndTransfer(
+                address(this),
+                auctions[_auctionId].highestBidder,
+                auctions[_auctionId].tokenRepositoryAddress,
+                auctions[_auctionId].tokenId
+            );
         }
     }
 
