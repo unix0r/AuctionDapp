@@ -1,6 +1,9 @@
-test/output.address
+output.address
 blockchain.eth
 accounts.keys
+package-lock.json
+package.json
+
 
 *.swp
 *.swo
