@@ -5,8 +5,8 @@ module.exports = {
       host: "127.0.0.1",
       port: 7545,
       network_id: "*",
-      gas: 3000000,
-      gasPrice: 20000000000
+      gas: 3e6,
+      gasPrice: 2e10
     }
   },
   //Compiler to compile Smart Contracts
