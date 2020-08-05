@@ -11,12 +11,12 @@
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
    sodipodi:docname="SSPA.svg"
-   id="svg1610"
-   height="740.14679"
-   width="1229.2943"
+   id="svg1660"
+   height="708.75"
+   width="1212"
    version="1.1">
   <metadata
-     id="metadata1614">
+     id="metadata1664">
     <rdf:RDF>
       <cc:Work
          rdf:about="">
@@ -27,17 +27,17 @@
     </rdf:RDF>
   </metadata>
   <sodipodi:namedview
-     inkscape:current-layer="g1608"
+     inkscape:current-layer="g1658"
      inkscape:window-maximized="1"
-     inkscape:window-y="27"
-     inkscape:window-x="0"
-     inkscape:cy="364.8521"
-     inkscape:cx="571.29429"
-     inkscape:zoom="0.85149697"
+     inkscape:window-y="0"
+     inkscape:window-x="1920"
+     inkscape:cy="347.5"
+     inkscape:cx="574"
+     inkscape:zoom="1.2391785"
      showgrid="false"
-     id="namedview1612"
-     inkscape:window-height="1025"
-     inkscape:window-width="1920"
+     id="namedview1662"
+     inkscape:window-height="1412"
+     inkscape:window-width="2560"
      inkscape:pageshadow="2"
      inkscape:pageopacity="0"
      guidetolerance="10"
@@ -50,10 +50,9 @@
   <defs
      id="defs2" />
   <g
-     transform="translate(-86.705714,-122.6479)"
-     id="g1608">
+     transform="translate(-84,-140)"
+     id="g1658">
     <g
-       transform="matrix(0.9341142,0,0,0.75912492,86.705714,122.6479)"
        id="g6">
       <rect
          id="rect4"
@@ -4467,6 +4466,174 @@
            font-family="Arial"
            stroke="none"
            fill="#08233f">Tokens</text>
+      </g>
+    </g>
+    <g
+       id="g1656"
+       transform="translate(752,743)">
+      <g
+         id="g1612">
+        <g
+           id="g1610">
+          <rect
+             id="rect1608"
+             fill-opacity="0"
+             height="14"
+             width="276"
+             y="0"
+             x="0"
+             stroke="none"
+             fill="#000000" />
+        </g>
+      </g>
+      <g
+         id="g1618">
+        <g
+           id="g1616">
+          <rect
+             id="rect1614"
+             fill-opacity="0"
+             height="14"
+             width="276"
+             y="0"
+             x="0"
+             stroke="none"
+             fill="#000000" />
+        </g>
+      </g>
+      <g
+         id="g1624">
+        <g
+           id="g1622">
+          <rect
+             id="rect1620"
+             fill-opacity="0"
+             height="14"
+             width="246"
+             y="0"
+             x="14.883331"
+             stroke="none"
+             fill="#000000" />
+        </g>
+      </g>
+      <g
+         id="g1630">
+        <g
+           id="g1628">
+          <rect
+             id="rect1626"
+             fill-opacity="0"
+             height="14"
+             width="246"
+             y="0"
+             x="14.883331"
+             stroke="none"
+             fill="#000000" />
+        </g>
+      </g>
+      <g
+         id="g1650">
+        <g
+           id="g1634">
+          <rect
+             id="rect1632"
+             fill-opacity="0"
+             height="14"
+             width="246"
+             y="0"
+             x="14.883331"
+             stroke="none"
+             fill="#000000" />
+        </g>
+        <text
+           id="text1636"
+           y="11"
+           x="14.883331"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">©</text>
+        <text
+           id="text1638"
+           y="11"
+           x="23.733337"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">2020</text>
+        <text
+           id="text1640"
+           y="11"
+           x="53.733337"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">Artur</text>
+        <text
+           id="text1642"
+           y="11"
+           x="86.399994"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">Dick</text>
+        <text
+           id="text1644"
+           y="11"
+           x="111.73334"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">|</text>
+        <text
+           id="text1646"
+           y="11"
+           x="121.75"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">Hochschule</text>
+        <text
+           id="text1648"
+           y="11"
+           x="193.08333"
+           line-height="14px"
+           text-decoration=""
+           font-weight="700"
+           font-style="normal"
+           font-size="12px"
+           font-family="Arial"
+           stroke="none"
+           fill="#08233f">Furtwangen</text>
+      </g>
+      <g
+         id="g1654">
+        <g
+           id="g1652" />
       </g>
     </g>
   </g>
