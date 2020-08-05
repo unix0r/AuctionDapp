@@ -151,6 +151,14 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /// @param _auctionId The auction
     event AuctionCanceled(uint256 _auctionId);
 
+    /// @dev The Bid Time is over
+    /// @param _auctionId The auction
+    event BidTimeOver(uint256 _auctionId);
+
+    /// @dev The Reveal Time is over
+    /// @param _auctionId The auction
+    event RevealTimeOver(uint256 _auctionId);
+
     /// @dev The contract received a token
     event ReceivedToken(
         address operator,
@@ -169,7 +177,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     ) public override(IERC721Receiver) returns (bytes4 value) {
         previousOwner[_tokenId] = _from;
         emit ReceivedToken(_operator, _from, _tokenId, _data, gasleft());
-        return 0x150b7a02;
+        return 0x150b7a02; //Equals to `bytes4(keccak256("onERC721Received(address,address,uint256,bytes)"))`
     }
 
     /// @dev Creates an auction with the given information
@@ -432,6 +440,30 @@ contract VickreyAuctionHouse is IERC721Receiver {
                 auctions[_auctionId].tokenId
             );
         }
+    }
+
+    /// @dev The owner of the auction can trigger an event, that the bid time period is over
+    /// @dev The Bidders are informed about the end of this time period
+    /// @param _auctionId The ID of the auction
+    function endBidTime(uint256 _auctionId)
+        public
+        onlyAfter(auctions[_auctionId].biddingEnd)
+        onlyBefore(auctions[_auctionId].revealEnd)
+        isActive(_auctionId)
+    {
+        emit BidTimeOver(_auctionId);
+    }
+
+    /// @dev The owner of the auction can trigger an event, that the reveal time period is over
+    /// @dev The Bidders are informed about the end of this time period
+    /// @param _auctionId The ID of the auction
+    function endRevealTime(uint256 _auctionId)
+        public
+        onlyAfter(auctions[_auctionId].biddingEnd)
+        onlyAfter(auctions[_auctionId].revealEnd)
+        isActive(_auctionId)
+    {
+        emit RevealTimeOver(_auctionId);
     }
 
     /// @dev Gets the refund of an address
