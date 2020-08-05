@@ -20,8 +20,4 @@ contract TokenRepository is ERC721 {
         _mint(_beneficiary, _tokenId);
         return _tokenId;
     }
-
-    function exists(uint256 _tokenId) public view returns (bool) {
-        return _exists(_tokenId);
-    }
 }
