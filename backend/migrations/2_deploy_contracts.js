@@ -1,7 +1,7 @@
 
-var SecondPriceAuction = artifacts.require("./VickreyAuctionHouse.sol");
-var TokenRepository = artifacts.require("./TokenRepository.sol");
+var VickreyAuctionHouse = artifacts.require("./VickreyAuctionHouse.sol");
+var EmissionRepository = artifacts.require("./EmissionRepository.sol");
 module.exports = function(deployer) {
-  deployer.deploy(TokenRepository);
-  deployer.deploy(SecondPriceAuction);
+  deployer.deploy(EmissionRepository);
+  deployer.deploy(VickreyAuctionHouse);
 };

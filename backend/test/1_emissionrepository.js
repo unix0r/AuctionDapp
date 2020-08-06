@@ -1,17 +1,17 @@
 var assert = require("assert");
-var tokenRepository = artifacts.require("./TokenRepository.sol");
+var emissionRepository = artifacts.require("./EmissionRepository.sol");
 const fs = require("fs");
 const truffleAssert = require("truffle-assertions");
 const PREFIX = "VM Exception while processing transaction: ";
 
-contract("tokenRepository", async (accounts) => {
+contract("EmissionRepository", async (accounts) => {
   let instance;
   let tokenId1 = 1234567;
   let tokenId2 = 2345678;
   let tokenType = "Carbondioxid";
 
   beforeEach("setup contract for each test", async function () {
-    instance = await tokenRepository.deployed();
+    instance = await emissionRepository.deployed();
   });
 
   it("It should create an token repository with Carbondioxid as symbol", async () => {
@@ -19,7 +19,7 @@ contract("tokenRepository", async (accounts) => {
     assert.equal(
       symbol.valueOf(),
       tokenType,
-      "Deedrepository symbol should be Carbondioxid"
+      "EmissionRepository symbol should be Carbondioxid"
     );
   });
 
@@ -27,7 +27,7 @@ contract("tokenRepository", async (accounts) => {
     let balanceOfOwner = await instance.balanceOf(accounts[0]);
 
     assert.equal(balanceOfOwner, 0, "Wrong amount of Tokens for owner");
-    await instance.registerToken(accounts[0], tokenId1, {
+    await instance.registerEmission(accounts[0], tokenId1, {
       from: accounts[0],
     });
     //await truffleAssert.reverts(instance.tokenURI(tokenId2), "ERC721Metadata: URI query for nonexistent token");
@@ -39,7 +39,7 @@ contract("tokenRepository", async (accounts) => {
 
   it("It should not register a Token that already exists.", async () => {
     await truffleAssert.reverts(
-      instance.registerToken(accounts[0], tokenId1, {
+      instance.registerEmission(accounts[0], tokenId1, {
         from: accounts[0],
       }),
       "Token already exists"
@@ -70,7 +70,7 @@ contract("tokenRepository", async (accounts) => {
     assert.equal(balanceOfOwner, 0, "Wrong amount of Tokens for owner");
 
     await truffleAssert.reverts(
-      instance.registerToken(accounts[1], tokenId2, {
+      instance.registerEmission(accounts[1], tokenId2, {
         from: accounts[1],
       }),
       "No Permission"

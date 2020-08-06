@@ -1,5 +1,5 @@
 var VickreyAuctionHouse = artifacts.require("./VickreyAuctionHouse.sol");
-var TokenRepository = artifacts.require("./TokenRepository.sol");
+var TokenRepository = artifacts.require("./EmissionRepository.sol");
 const fs = require("fs");
 const {soliditySha3} = require("web3-utils");
 const {expectRevert, time, balance} = require("@openzeppelin/test-helpers");
@@ -63,7 +63,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
   });
 
   it("It should not create a new auction: Token is not owned by Contract.", async () => {
-    await tokenRepo.registerToken(accounts[0], tokenId, {
+    await tokenRepo.registerEmission(accounts[0], tokenId, {
       from: accounts[0],
     });
     let auctionLength = await auctionHouse.getAuctionsCount();
@@ -597,5 +597,37 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     let tokenOwner = await tokenRepo.ownerOf(tokenId);
     expect(tokenOwner).to.be.equal(accounts[4]);
+  });
+
+  it("It should not cancel auction: The auctionId does not exist", async () => {
+    let auctionLength = await auctionHouse.getAuctionsCount();
+    await expectRevert(auctionHouse.cancelAuction(auctionLength.add(new BN(1)).toNumber()), "Auction does not exist.");
+  });
+
+  it("It should not bid on an auction: The auctionId does not exist", async () => {
+    let sealedBid = getSealedBid(10, "Hello");
+    let auctionLength = await auctionHouse.getAuctionsCount();
+    await expectRevert(
+      auctionHouse.sealedBid(auctionLength.add(new BN(1)).toNumber(), sealedBid, {
+        from: accounts[1],
+        value: deposits[1],
+      }),
+      "Auction does not exist."
+    );
+  });
+
+  it("It should not reveal a bid: The auctionId does not exist", async () => {
+    let auctionLength = await auctionHouse.getAuctionsCount();
+    await expectRevert(
+      auctionHouse.reveal(auctionLength.add(new BN(1)).toNumber(), bids[0], secrets[0], {
+        from: accounts[1],
+      }),
+      "Auction does not exist."
+    );
+  });
+
+  it("It should not end an auction: The auctionId does not exist", async () => {
+    let auctionLength = await auctionHouse.getAuctionsCount();
+    await expectRevert(auctionHouse.endAuction(auctionLength.add(new BN(1)).toNumber()), "Auction does not exist.");
   });
 });
