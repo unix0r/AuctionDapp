@@ -127,6 +127,11 @@ contract VickreyAuctionHouse is IERC721Receiver {
         _;
     }
 
+    modifier auctionExists(uint256 _auctionId) {
+        require(_auctionId < auctions.length, "Auction does not exist.");
+        _;
+    }
+
     /// @dev Bid was successfull
     /// @param _auctionId The auction
     /// @param _from The bidder
@@ -259,6 +264,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     function getAuctionById(uint256 _auctionId)
         public
         view
+        auctionExists(_auctionId)
         returns (
             uint256 tokenId,
             address tokenRepositoryAddress,
@@ -289,7 +295,11 @@ contract VickreyAuctionHouse is IERC721Receiver {
 
     /// @dev Cancels an auction, if its alive and there are no bidders.
     /// @param _auctionId The ID of the auction.
-    function cancelAuction(uint256 _auctionId) public isOwner(_auctionId) {
+    function cancelAuction(uint256 _auctionId)
+        public
+        auctionExists(_auctionId)
+        isOwner(_auctionId)
+    {
         require(auctions[_auctionId].active == true, "Auction is not alive.");
         require(
             auctionBids[_auctionId].length == 0,
@@ -318,6 +328,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     function sealedBid(uint256 _auctionId, bytes32 _blindedBid)
         public
         payable
+        auctionExists(_auctionId)
         onlyBefore(auctions[_auctionId].biddingEnd)
         didNotBid(_auctionId)
         isNotOwner(_auctionId)
@@ -340,6 +351,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         string memory _secret
     )
         public
+        auctionExists(_auctionId)
         isNotOwner(_auctionId)
         onlyAfter(auctions[_auctionId].biddingEnd)
         onlyBefore(auctions[_auctionId].revealEnd)
@@ -415,6 +427,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /// @param _auctionId The ID of the auction
     function endAuction(uint256 _auctionId)
         public
+        auctionExists(_auctionId)
         onlyAfter(auctions[_auctionId].revealEnd)
         isActive(_auctionId)
     {
@@ -447,6 +460,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /// @param _auctionId The ID of the auction
     function endBidTime(uint256 _auctionId)
         public
+        auctionExists(_auctionId)
         onlyAfter(auctions[_auctionId].biddingEnd)
         onlyBefore(auctions[_auctionId].revealEnd)
         isActive(_auctionId)
@@ -459,6 +473,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /// @param _auctionId The ID of the auction
     function endRevealTime(uint256 _auctionId)
         public
+        auctionExists(_auctionId)
         onlyAfter(auctions[_auctionId].biddingEnd)
         onlyAfter(auctions[_auctionId].revealEnd)
         isActive(_auctionId)
@@ -476,7 +491,12 @@ contract VickreyAuctionHouse is IERC721Receiver {
     /// @dev Gets the current amount of blindedBids of this auction
     /// @param _auctionId The ID of the auction
     /// @return The amount of blinded bids in this auction
-    function getBidCount(uint256 _auctionId) public view returns (uint256) {
+    function getBidCount(uint256 _auctionId)
+        public
+        view
+        auctionExists(_auctionId)
+        returns (uint256)
+    {
         return auctionBids[_auctionId].length;
     }
 }
