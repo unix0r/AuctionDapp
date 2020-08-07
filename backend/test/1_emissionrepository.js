@@ -8,18 +8,18 @@ contract("EmissionRepository", async (accounts) => {
   let instance;
   let tokenId1 = 1234567;
   let tokenId2 = 2345678;
-  let tokenType = "Carbondioxid";
+  let tokenType = "CO2";
 
   beforeEach("setup contract for each test", async function () {
     instance = await emissionRepository.deployed();
   });
 
-  it("It should create an token repository with Carbondioxid as symbol", async () => {
+  it("It should create an token repository with CO2 as symbol", async () => {
     let symbol = await instance.symbol();
     assert.equal(
       symbol.valueOf(),
       tokenType,
-      "EmissionRepository symbol should be Carbondioxid"
+      "EmissionRepository symbol should be CO2"
     );
   });
 
@@ -54,7 +54,7 @@ contract("EmissionRepository", async (accounts) => {
     assert.equal(
       symbol.valueOf(),
       tokenType,
-      "Deedrepository symbol should be Carbondioxid"
+      "Deedrepository symbol should be CO2"
     );
   });
 
