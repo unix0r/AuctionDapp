@@ -9,6 +9,12 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 /// The Smart Contract for the simultaneous second price auction (Vickrey Auction)
 contract VickreyAuctionHouse is IERC721Receiver {
+    address private _owner;
+
+    constructor() public {
+        _owner = msg.sender;
+    }
+
     // Struct containing information about a sealed bid
     struct Bid {
         address from;
@@ -378,6 +384,7 @@ contract VickreyAuctionHouse is IERC721Receiver {
         }
         emit RevealedBid(_auctionId, msg.sender);
         bid.blindedBid = bytes32(0);
+        bid.deposit = 0;
         refunds[msg.sender] += refund;
     }
 
@@ -453,6 +460,13 @@ contract VickreyAuctionHouse is IERC721Receiver {
                 auctions[_auctionId].tokenId
             );
         }
+        
+        for (uint256 i = 0; i < auctionBids[_auctionId].length; i++) {
+            refunds[_owner] += auctionBids[_auctionId][i].deposit;
+            auctionBids[_auctionId][i].blindedBid = bytes32(0);
+            auctionBids[_auctionId][i].deposit = 0;
+        }
+        
     }
 
     /// @dev The owner of the auction can trigger an event, that the bid time period is over

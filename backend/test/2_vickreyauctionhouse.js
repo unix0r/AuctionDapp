@@ -16,9 +16,9 @@ contract("VickreyAuctionHouse", async (accounts) => {
   var auctionId;
   var balanceContractTracker;
 
-  var bids = [1, 1, 3, 4, 8, 6];
-  var deposits = [1, 3, 5, 5, 10, 8];
-  var secrets = ["01", "12345", "hidden", "secret", "gulf", "sierra"];
+  var bids = [1, 1, 3, 4, 8, 6, 1000];
+  var deposits = [1, 3, 5, 5, 10, 8, 10000];
+  var secrets = ["01", "12345", "hidden", "secret", "gulf", "sierra", "invalid"];
   var sealedBids = [];
   var balanceTracker = [];
 
@@ -386,7 +386,7 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
   it("It should reveal bids.", async () => {
     var i;
-    for (i = 1; i < bids.length - 1; i++) {
+    for (i = 1; i < bids.length - 2; i++) {
       let refund = await auctionHouse.getRefund(accounts[parseInt(i, 10)]);
       expect(refund.toNumber()).to.be.equal(0);
       await auctionHouse.reveal(auctionId, bids[parseInt(i, 10)], secrets[parseInt(i, 10)], {
@@ -402,18 +402,18 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     let auction = await auctionHouse.getAuctionById(auctionId);
 
-    expect(auction[7]).to.be.equal(accounts[bids.length - 2]);
-    expect(auction[8].toNumber()).to.be.equal(bids[bids.length - 2]);
+    expect(auction[7]).to.be.equal(accounts[bids.length - 3]);
+    expect(auction[8].toNumber()).to.be.equal(bids[bids.length - 3]);
 
-    await auctionHouse.reveal(auctionId, bids[bids.length - 1], secrets[bids.length - 1], {
-      from: accounts[bids.length - 1],
+    await auctionHouse.reveal(auctionId, bids[bids.length - 2], secrets[bids.length - 2], {
+      from: accounts[bids.length - 2],
     });
-    let refund = await auctionHouse.getRefund(accounts[bids.length - 1]);
-    expect(refund.toNumber()).to.be.equal(deposits[bids.length - 1]);
+    let refund = await auctionHouse.getRefund(accounts[bids.length - 2]);
+    expect(refund.toNumber()).to.be.equal(deposits[bids.length - 2]);
     auction = await auctionHouse.getAuctionById(auctionId);
 
-    expect(auction[7]).to.be.equal(accounts[bids.length - 2]);
-    expect(auction[8].toNumber()).to.be.equal(bids[bids.length - 2]);
+    expect(auction[7]).to.be.equal(accounts[bids.length - 3]);
+    expect(auction[8].toNumber()).to.be.equal(bids[bids.length - 3]);
   });
 
   it("it should end the reveal time.", async () => {
@@ -505,12 +505,12 @@ contract("VickreyAuctionHouse", async (accounts) => {
   });
 
   it("It should withdraw the money.", async () => {
-    //let auction = await auctionHouse.getAuctionById(auctionId);
+    let auction = await auctionHouse.getAuctionById(auctionId);
     await balanceContractTracker.delta();
     let gasCosts = [];
     let deltas = [];
     var i;
-    for (i = 0; i < bids.length - 1; i++) {
+    for (i = 0; i < bids.length - 2; i++) {
       await balanceTracker[[parseInt(i, 10)]].delta();
       let result = await auctionHouse.withdraw({
         from: accounts[[parseInt(i, 10)]],
@@ -521,13 +521,13 @@ contract("VickreyAuctionHouse", async (accounts) => {
 
     await balanceTracker[bids.length - 1].delta();
     let result = await auctionHouse.withdraw({
-      from: accounts[bids.length - 1],
+      from: accounts[bids.length - 2],
     });
     gasCosts[bids.length - 1] = new BN(result.receipt.gasUsed).mul(gasPrice);
     deltas[bids.length - 1] = await balanceTracker[[bids.length - 1]].delta();
 
-    // Seller gets the second highes bid, but has to pay the gas.
-    expect(new BN(bids[3]).sub(gasCosts[0]).abs().cmp(deltas[0].abs())).to.be.equal(0);
+    // Seller/Owner gets the second highes bid and the deposit of the unrevealed bid but has to pay the gas.
+    expect(new BN(bids[3]).add(new BN(deposits[6])).sub(gasCosts[0]).abs().cmp(deltas[0].abs())).to.be.equal(0);
 
     // Bidders get their deposits, but have to pay the gas.
     expect(new BN(deposits[1]).sub(gasCosts[1]).abs().cmp(deltas[1].abs())).to.be.equal(0);
